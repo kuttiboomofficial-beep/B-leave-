@@ -315,6 +315,12 @@
       <input id="companyName" placeholder="Type your company name" />
     </div>
     <p style="margin: 10px 0 0 14px; font-size:11px; color:#9AA9BC;">Data is saved on this device/browser only.</p>
+    <div style="display:flex; gap:10px; margin: 14px 0 0 14px; flex-wrap:wrap;">
+      <button id="backupBtn" style="background:transparent; color:#EFEAE0; border:1px solid rgba(255,255,255,0.35); font-size:12px; padding:8px 14px;">⬇ Backup Data</button>
+      <label style="background:transparent; color:#EFEAE0; border:1px solid rgba(255,255,255,0.35); font-size:12px; padding:8px 14px; border-radius:3px; cursor:pointer; font-family:'Inter',sans-serif; font-weight:600;">⬆ Restore Backup
+        <input type="file" id="restoreInput" accept="application/json" style="display:none;">
+      </label>
+    </div>
   </div>
 
   <div class="summary" id="summary"></div>
@@ -427,14 +433,7 @@
     </div>
   </div>
 
-  <div class="register">
-    <div class="register-head">
-      <h2>Register <span style="font-family:'Inter'; font-weight:400; font-size:12px; color:var(--ink-soft);">பதிவேடு</span></h2>
-      <input class="search" id="searchBox" placeholder="Search worker or dept..." />
-    </div>
-    <div id="tableWrap"></div>
-    <div id="statusMsg" class="status-msg"></div>
-  </div>
+  <div id="statusMsg" class="status-msg"></div>
 
 </div>
 
@@ -794,6 +793,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 function editEntry(id){
   const en = entries.find(e => e.id === id);
   if(!en) return;
+  document.getElementById('historyModal').classList.add('hidden');
   document.getElementById('f_name').value = en.name;
   setWorkerNameDisplay(en.name);
   document.getElementById('f_dept').value = en.dept;
@@ -812,17 +812,18 @@ function editEntry(id){
 }
 
 async function deleteEntry(id){
+  const wasOpenFor = document.getElementById('historyName').textContent;
+  const historyOpen = !document.getElementById('historyModal').classList.contains('hidden');
   entries = entries.filter(e => e.id !== id);
   await persistEntries();
   render();
+  if(historyOpen) openHistory(wasOpenFor);
 }
 
-document.getElementById('searchBox').addEventListener('input', render);
 document.getElementById('workerSearchBox').addEventListener('input', renderWorkers);
 
 function render(){
   renderSummary();
-  renderTable();
   renderWorkers();
 }
 
@@ -857,60 +858,6 @@ function renderSummary(){
     <div class="stat" style="cursor:pointer;" data-action="open-history-picker"><div class="n">🕘</div><div class="l">Worker Leave History</div></div>
     <div class="stat"><div class="n" style="color:var(--stamp);">${onLeaveToday}</div><div class="l">Leave Counting (ஊர்ல)</div></div>
     <div class="stat"><div class="n" style="color:var(--ok);">${presentToday}</div><div class="l">Present today</div></div>
-    <div class="stat"><div class="n">${totalDays}</div><div class="l">Total leave days</div></div>
-    <div class="stat"><div class="n">${totalExtra}</div><div class="l">Extra leave days</div></div>
-  `;
-}
-
-function renderTable(){
-  const q = document.getElementById('searchBox').value.trim().toLowerCase();
-  const filtered = entries.filter(e =>
-    !q || e.name.toLowerCase().includes(q) || (e.dept || '').toLowerCase().includes(q)
-  ).sort((a,b) => (b.start || '').localeCompare(a.start || ''));
-
-  const wrap = document.getElementById('tableWrap');
-
-  if(filtered.length === 0){
-    wrap.innerHTML = `<div class="empty">
-      <div class="big">${entries.length === 0 ? 'No entries yet' : 'No matches'}</div>
-      <div>${entries.length === 0 ? 'Add the first leave record above.' : 'Try a different search.'}</div>
-    </div>`;
-    return;
-  }
-
-  const rows = filtered.map(e => {
-    const total = daysBetweenInclusive(e.start, e.rejoin);
-    return `
-      <tr>
-        <td class="name-cell" data-action="open-history" data-name="${escapeHtml(e.name)}">${escapeHtml(e.name)}</td>
-        <td>${e.dept ? `<span class="dept-tag">${escapeHtml(e.dept)}</span>` : '—'}</td>
-        <td>${e.pld || '—'}</td>
-        <td>${fmtDate(e.start)}</td>
-        <td>${e.rejoin ? fmtDate(e.rejoin) : '<em style="color:#9AA3AE;">ongoing</em>'}</td>
-        <td class="total-badge">${total === null ? '—' : total + 'd'}</td>
-        <td class="extra-badge">${e.extra ? e.extra + 'd' : '—'}</td>
-        <td>${e.code || '—'}</td>
-        <td class="reason-text">${escapeHtml(e.reason) || '—'}</td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-btn" data-action="edit-entry" data-id="${e.id}" title="Edit">✎</button>
-            <button class="icon-btn" data-action="delete-entry" data-id="${e.id}" title="Delete">✕</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  wrap.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Worker Name</th><th>Department</th><th>PLD</th><th>Leave Start</th>
-          <th>Rejoined</th><th>Total Leave</th><th>Extra</th><th>Code</th><th>Reason</th><th></th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
   `;
 }
 
@@ -982,6 +929,10 @@ function openHistory(name){
             <span>Code: ${r.code || '—'}</span>
           </div>
           ${r.reason ? `<div class="reason">${escapeHtml(r.reason)}</div>` : ''}
+          <div class="row-actions" style="margin-top:6px;">
+            <button class="icon-btn" data-action="edit-entry" data-id="${r.id}" title="Edit">✎ Edit</button>
+            <button class="icon-btn" data-action="delete-entry" data-id="${r.id}" title="Delete">✕ Delete</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -1045,6 +996,59 @@ document.getElementById('closeWorkersDetail').addEventListener('click', () => {
 });
 document.getElementById('workersDetailModal').addEventListener('click', (e) => {
   if(e.target.id === 'workersDetailModal') document.getElementById('workersDetailModal').classList.add('hidden');
+});
+
+function exportBackup(){
+  const data = {
+    companyName: localStorage.getItem(COMPANY_KEY) || '',
+    workers: workers,
+    entries: entries,
+    exportedAt: new Date().toISOString()
+  };
+  try{
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leave-register-backup-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(err){
+    setStatus('Backup failed — please try again.');
+  }
+}
+
+document.getElementById('backupBtn').addEventListener('click', exportBackup);
+
+document.getElementById('restoreInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!confirm('இப்போ இருக்குற data-ஐ இந்த backup file data replace பண்ணும். தொடரவா?')){
+        e.target.value = '';
+        return;
+      }
+      workers = Array.isArray(data.workers) ? data.workers : [];
+      entries = Array.isArray(data.entries) ? data.entries : [];
+      await persistWorkers();
+      await persistEntries();
+      if(typeof data.companyName === 'string'){
+        localStorage.setItem(COMPANY_KEY, data.companyName);
+        document.getElementById('companyName').value = data.companyName;
+      }
+      render();
+      setStatus('Backup restored successfully.');
+    }catch(err){
+      setStatus('Invalid backup file.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 });
 
 loadAll();
