@@ -226,6 +226,16 @@
   #workerTableWrap{ margin-top: 14px; }
   #workerTableWrap table{ font-size:12.5px; }
   #workerTableWrap .empty{ padding: 20px; font-size:13px; }
+  .worker-chip-list{ display:flex; flex-direction:column; gap:6px; max-height: 320px; overflow-y:auto; }
+  .worker-chip{
+    display:flex; align-items:center; gap:8px;
+    background:#FAF9F5; border:1px solid var(--paper-line); border-radius:3px;
+    padding: 10px 12px; cursor:pointer;
+  }
+  .worker-chip:hover{ background:#F1EFE9; }
+  .worker-chip .wc-name{ font-weight:600; color: var(--navy); flex:1; }
+  .worker-chip .wc-arrow{ color:#B7BFC9; font-size:16px; }
+  .worker-search-row{ margin: 8px 0 4px; }
   .status-msg{
     text-align:center; padding:10px; font-size:12px; color: var(--ink-soft);
   }
@@ -350,7 +360,6 @@
       <button class="btn-ghost" id="cancelWorkerEdit" style="display:none;">Cancel</button>
       <button class="btn-primary" id="saveWorkerBtn">Save Worker</button>
     </div>
-    <div id="workerTableWrap"></div>
   </div>
 
   <div class="card">
@@ -438,8 +447,29 @@
       </div>
       <button class="modal-close" id="closeHistory">✕</button>
     </div>
+    <div id="historyProfileActions" style="display:none; gap:8px; padding: 10px 20px 0;">
+      <button class="btn-ghost" style="font-size:12px; padding:6px 12px;" data-action="edit-profile-worker">✎ Edit Worker</button>
+      <button class="btn-danger" style="font-size:12px; padding:6px 12px;" data-action="delete-profile-worker">✕ Delete Worker</button>
+    </div>
     <div class="modal-stats" id="historyStats"></div>
     <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="workersDetailModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h3>Workers Details</h3>
+        <div class="sub">தொழிலாளிகள் விவரம்</div>
+      </div>
+      <button class="modal-close" id="closeWorkersDetail">✕</button>
+    </div>
+    <div class="worker-search-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding: 12px 20px 0;">
+      <span style="font-size:12px; color:var(--ink-soft);"><strong id="workerCount" style="color:var(--navy); font-family:'Special Elite',monospace;">0</strong> workers on record</span>
+      <input class="search" id="workerSearchBox" placeholder="Search worker..." style="width:140px;" />
+    </div>
+    <div id="workerTableWrap" style="padding: 10px 20px 16px;"></div>
   </div>
 </div>
 
@@ -447,8 +477,8 @@
   <div class="modal-card">
     <div class="modal-head">
       <div>
-        <h3>Select Worker</h3>
-        <div class="sub">தொழிலாளியை தேர்ந்தெடுங்க</div>
+        <h3 id="pickerTitle">Select Worker</h3>
+        <div class="sub" id="pickerSub">தொழிலாளியை தேர்ந்தெடுங்க</div>
       </div>
       <button class="modal-close" id="closePicker">✕</button>
     </div>
@@ -575,11 +605,13 @@ document.getElementById('saveWorkerBtn').addEventListener('click', async () => {
   await persistWorkers();
   clearWorkerForm();
   renderWorkers();
+  renderSummary();
 });
 
 function editWorker(id){
   const w = workers.find(x => x.id === id);
   if(!w) return;
+  document.getElementById('workersDetailModal').classList.add('hidden');
   document.getElementById('w_name').value = w.name;
   document.getElementById('w_dept').value = w.dept;
   document.getElementById('w_joined').value = w.joined;
@@ -595,15 +627,26 @@ async function deleteWorker(id){
   workers = workers.filter(w => w.id !== id);
   await persistWorkers();
   renderWorkers();
+  renderSummary();
 }
 
 function renderWorkers(){
+  document.getElementById('workerCount').textContent = workers.length;
   const wrap = document.getElementById('workerTableWrap');
   if(workers.length === 0){
     wrap.innerHTML = `<div class="empty">No workers added yet.</div>`;
     return;
   }
-  const rows = workers.slice().sort((a,b) => a.name.localeCompare(b.name)).map(w => `
+  const q = (document.getElementById('workerSearchBox')?.value || '').trim().toLowerCase();
+  const filtered = workers.filter(w => !q || w.name.toLowerCase().includes(q) || (w.dept || '').toLowerCase().includes(q));
+  const sorted = filtered.slice().sort((a,b) => a.name.localeCompare(b.name));
+
+  if(sorted.length === 0){
+    wrap.innerHTML = `<div class="empty">No matches.</div>`;
+    return;
+  }
+
+  const rows = sorted.map(w => `
     <tr>
       <td class="name-cell" data-action="open-history" data-name="${escapeHtml(w.name)}">${escapeHtml(w.name)}</td>
       <td>${w.dept ? `<span class="dept-tag">${escapeHtml(w.dept)}</span>` : '—'}</td>
@@ -617,6 +660,7 @@ function renderWorkers(){
       </td>
     </tr>
   `).join('');
+
   wrap.innerHTML = `
     <table>
       <thead><tr><th>Name</th><th>Department</th><th>Joined</th><th>Phone</th><th></th></tr></thead>
@@ -637,6 +681,9 @@ function setWorkerNameDisplay(name){
 }
 
 function openWorkerPicker(){
+  pickerMode = 'entry';
+  document.getElementById('pickerTitle').textContent = 'Select Worker';
+  document.getElementById('pickerSub').textContent = 'தொழிலாளியை தேர்ந்தெடுங்க';
   document.getElementById('pickerSearch').value = '';
   renderPickerList('');
   document.getElementById('workerPickerModal').classList.remove('hidden');
@@ -664,7 +711,7 @@ function renderPickerList(query){
       </div>
     `).join('');
   }
-  if(q && !workers.some(w => w.name.toLowerCase() === q)){
+  if(q && pickerMode === 'entry' && !workers.some(w => w.name.toLowerCase() === q)){
     html += `<div class="history-item" style="cursor:pointer; color:var(--navy); font-weight:600;" data-action="pick-custom">+ Use "${escapeHtml(query.trim())}" (not in worker list)</div>`;
   }
   listEl.innerHTML = html;
@@ -673,6 +720,11 @@ function renderPickerList(query){
 function pickWorker(id){
   const w = workers.find(x => x.id === id);
   if(!w) return;
+  if(pickerMode === 'history'){
+    document.getElementById('workerPickerModal').classList.add('hidden');
+    openHistory(w.name);
+    return;
+  }
   document.getElementById('f_name').value = w.name;
   setWorkerNameDisplay(w.name);
   if(w.dept) document.getElementById('f_dept').value = w.dept;
@@ -766,6 +818,7 @@ async function deleteEntry(id){
 }
 
 document.getElementById('searchBox').addEventListener('input', render);
+document.getElementById('workerSearchBox').addEventListener('input', renderWorkers);
 
 function render(){
   renderSummary();
@@ -773,21 +826,39 @@ function render(){
   renderWorkers();
 }
 
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function isOnLeaveToday(e){
+  if(!e.start) return false;
+  const today = todayStr();
+  if(e.start > today) return false;
+  if(e.rejoin && e.rejoin < today) return false;
+  return true;
+}
+
 function renderSummary(){
-  const totalWorkers = new Set(entries.map(e => e.name.toLowerCase())).size;
+  const totalWorkers = workers.length;
   const totalDays = entries.reduce((sum, e) => {
     const d = daysBetweenInclusive(e.start, e.rejoin);
     return sum + (d || 0);
   }, 0);
   const totalExtra = entries.reduce((sum, e) => sum + (parseInt(e.extra) || 0), 0);
-  const ongoing = entries.filter(e => e.start && !e.rejoin).length;
+
+  const onLeaveTodayNames = new Set(entries.filter(isOnLeaveToday).map(e => e.name.toLowerCase()));
+  const onLeaveToday = onLeaveTodayNames.size;
+  const presentToday = Math.max(0, totalWorkers - onLeaveToday);
 
   document.getElementById('summary').innerHTML = `
-    <div class="stat"><div class="n">${entries.length}</div><div class="l">Total entries</div></div>
-    <div class="stat"><div class="n">${totalWorkers}</div><div class="l">Workers on record</div></div>
+    <div class="stat"><div class="n">${totalWorkers}</div><div class="l">Total workers</div></div>
+    <div class="stat" style="cursor:pointer;" data-action="open-workers-detail"><div class="n">📁</div><div class="l">Workers Details</div></div>
+    <div class="stat" style="cursor:pointer;" data-action="open-history-picker"><div class="n">🕘</div><div class="l">Worker Leave History</div></div>
+    <div class="stat"><div class="n" style="color:var(--stamp);">${onLeaveToday}</div><div class="l">Leave Counting (ஊர்ல)</div></div>
+    <div class="stat"><div class="n" style="color:var(--ok);">${presentToday}</div><div class="l">Present today</div></div>
     <div class="stat"><div class="n">${totalDays}</div><div class="l">Total leave days</div></div>
     <div class="stat"><div class="n">${totalExtra}</div><div class="l">Extra leave days</div></div>
-    <div class="stat"><div class="n">${ongoing}</div><div class="l">Not yet rejoined</div></div>
   `;
 }
 
@@ -843,7 +914,29 @@ function renderTable(){
   `;
 }
 
+let currentProfileWorkerId = null;
+let pickerMode = 'entry';
+
+function openWorkersDetail(){
+  document.getElementById('workerSearchBox').value = '';
+  renderWorkers();
+  document.getElementById('workersDetailModal').classList.remove('hidden');
+}
+
+function openHistoryPicker(){
+  pickerMode = 'history';
+  document.getElementById('pickerTitle').textContent = 'View Leave History';
+  document.getElementById('pickerSub').textContent = 'யாருடைய history பாக்கணும்?';
+  document.getElementById('pickerSearch').value = '';
+  renderPickerList('');
+  document.getElementById('workerPickerModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pickerSearch').focus(), 50);
+}
+
 function openHistory(name){
+  document.getElementById('workersDetailModal').classList.add('hidden');
+  document.getElementById('workerPickerModal').classList.add('hidden');
+
   const records = entries
     .filter(e => e.name.toLowerCase() === name.toLowerCase())
     .sort((a,b) => (b.start || '').localeCompare(a.start || ''));
@@ -851,6 +944,8 @@ function openHistory(name){
   document.getElementById('historyName').textContent = name;
   const depts = [...new Set(records.map(r => r.dept).filter(Boolean))];
   const master = workers.find(w => w.name.toLowerCase() === name.toLowerCase());
+  currentProfileWorkerId = master ? master.id : null;
+  document.getElementById('historyProfileActions').style.display = master ? 'flex' : 'none';
   const subParts = [];
   if(master?.dept || depts.length) subParts.push(master?.dept || depts.join(', '));
   if(master?.joined) subParts.push('Joined ' + fmtDate(master.joined));
@@ -929,6 +1024,27 @@ document.addEventListener('click', (e) => {
   else if(action === 'pick-custom') pickCustomName();
   else if(action === 'edit-entry') editEntry(id);
   else if(action === 'delete-entry') deleteEntry(id);
+  else if(action === 'edit-profile-worker'){
+    if(currentProfileWorkerId){
+      document.getElementById('historyModal').classList.add('hidden');
+      editWorker(currentProfileWorkerId);
+    }
+  }
+  else if(action === 'delete-profile-worker'){
+    if(currentProfileWorkerId && confirm('இந்த worker-ஐ நீக்கவா?')){
+      deleteWorker(currentProfileWorkerId);
+      document.getElementById('historyModal').classList.add('hidden');
+    }
+  }
+  else if(action === 'open-workers-detail') openWorkersDetail();
+  else if(action === 'open-history-picker') openHistoryPicker();
+});
+
+document.getElementById('closeWorkersDetail').addEventListener('click', () => {
+  document.getElementById('workersDetailModal').classList.add('hidden');
+});
+document.getElementById('workersDetailModal').addEventListener('click', (e) => {
+  if(e.target.id === 'workersDetailModal') document.getElementById('workersDetailModal').classList.add('hidden');
 });
 
 loadAll();
