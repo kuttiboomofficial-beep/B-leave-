@@ -82,6 +82,30 @@
   }
   .company-row input:focus{ outline:none; border-bottom-color: var(--gold-line); }
 
+  /* Overdue intimation banner */
+  .overdue-banner{
+    background: #FBEAE7;
+    border: 1px solid var(--stamp);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+  }
+  .overdue-banner .ob-title{
+    font-family:'Special Elite', monospace;
+    color: var(--stamp);
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .overdue-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 6px 0;
+    border-top: 1px solid rgba(163,61,46,0.15);
+    cursor:pointer;
+  }
+  .overdue-row:first-of-type{ border-top:none; }
+  .overdue-row .ob-name{ font-weight:600; color: var(--ink); font-size:13px; }
+  .overdue-row .ob-meta{ font-size:11px; color: var(--stamp); }
+
   /* Summary strip */
   .summary{
     display:flex; gap: 14px; flex-wrap:wrap;
@@ -323,6 +347,8 @@
     </div>
   </div>
 
+  <div id="overdueBanner"></div>
+
   <div class="summary" id="summary"></div>
 
   <div class="card">
@@ -404,6 +430,11 @@
         <label>Leave Start Date <span class="tam">தொடக்க நாள்</span></label>
         <input id="f_start" type="date" />
         <span style="font-size:10px; color:#9AA3AE;">📅 icon-ஐ தட்டி select பண்ணுங்க</span>
+      </div>
+      <div class="field">
+        <label>Date of Arrival <span class="tam">திரும்ப வரவேண்டிய தேதி</span></label>
+        <input id="f_expected" type="date" />
+        <span style="font-size:10px; color:#9AA3AE;">📅 சொன்ன திரும்பும் தேதி (rejoin ஆகுமுன்)</span>
       </div>
       <div class="field">
         <label>Rejoined Date <span class="tam">மீண்டும் சேர்ந்த நாள்</span></label>
@@ -753,7 +784,7 @@ function setStatus(msg){
 }
 
 function clearForm(){
-  ['f_name','f_dept','f_pld','f_start','f_rejoin','f_total','f_extra','f_code','f_reason'].forEach(id => document.getElementById(id).value = '');
+  ['f_name','f_dept','f_pld','f_start','f_expected','f_rejoin','f_total','f_extra','f_code','f_reason'].forEach(id => document.getElementById(id).value = '');
   setWorkerNameDisplay('');
   editingId = null;
   document.getElementById('formTitle').innerHTML = '+ New Leave Entry <span class="tam">புதிய பதிவு</span>';
@@ -773,6 +804,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     dept: document.getElementById('f_dept').value.trim(),
     pld: document.getElementById('f_pld').value,
     start: document.getElementById('f_start').value,
+    expected: document.getElementById('f_expected').value,
     rejoin: document.getElementById('f_rejoin').value,
     extra: document.getElementById('f_extra').value,
     code: document.getElementById('f_code').value.trim(),
@@ -799,6 +831,7 @@ function editEntry(id){
   document.getElementById('f_dept').value = en.dept;
   document.getElementById('f_pld').value = en.pld;
   document.getElementById('f_start').value = en.start;
+  document.getElementById('f_expected').value = en.expected || '';
   document.getElementById('f_rejoin').value = en.rejoin;
   document.getElementById('f_extra').value = en.extra;
   document.getElementById('f_code').value = en.code;
@@ -840,6 +873,36 @@ function isOnLeaveToday(e){
   return true;
 }
 
+function daysOverdue(expected){
+  const today = todayStr();
+  return daysBetweenInclusive(expected, today) - 1;
+}
+
+function getOverdueEntries(){
+  const today = todayStr();
+  return entries.filter(e => e.expected && !e.rejoin && e.expected < today);
+}
+
+function renderOverdueBanner(){
+  const overdue = getOverdueEntries().sort((a,b) => a.expected.localeCompare(b.expected));
+  const el = document.getElementById('overdueBanner');
+  if(overdue.length === 0){
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <div class="overdue-banner">
+      <div class="ob-title">⚠ இன்னும் திரும்பி வரல — ${overdue.length} பேர் (Not Yet Arrived)</div>
+      ${overdue.map(e => `
+        <div class="overdue-row" data-action="open-history" data-name="${escapeHtml(e.name)}">
+          <span class="ob-name">${escapeHtml(e.name)} ${e.dept ? `<span class="dept-tag">${escapeHtml(e.dept)}</span>` : ''}</span>
+          <span class="ob-meta">Expected ${fmtDate(e.expected)} · ${daysOverdue(e.expected)}d late</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function renderSummary(){
   const totalWorkers = workers.length;
   const totalDays = entries.reduce((sum, e) => {
@@ -859,6 +922,7 @@ function renderSummary(){
     <div class="stat"><div class="n" style="color:var(--stamp);">${onLeaveToday}</div><div class="l">Leave Counting (ஊர்ல)</div></div>
     <div class="stat"><div class="n" style="color:var(--ok);">${presentToday}</div><div class="l">Present today</div></div>
   `;
+  renderOverdueBanner();
 }
 
 let currentProfileWorkerId = null;
@@ -917,6 +981,7 @@ function openHistory(name){
   } else {
     listEl.innerHTML = records.map(r => {
       const total = daysBetweenInclusive(r.start, r.rejoin);
+      const isOverdue = r.expected && !r.rejoin && r.expected < todayStr();
       return `
         <div class="history-item">
           <div class="row1">
@@ -928,6 +993,7 @@ function openHistory(name){
             <span>Extra: ${r.extra || 0}d</span>
             <span>Code: ${r.code || '—'}</span>
           </div>
+          ${r.expected ? `<div class="meta" style="margin-top:2px;"><span style="${isOverdue ? 'color:var(--stamp); font-weight:600;' : ''}">${isOverdue ? '⚠ ' : ''}Date of Arrival: ${fmtDate(r.expected)}${isOverdue ? ' — ' + daysOverdue(r.expected) + 'd overdue' : ''}</span></div>` : ''}
           ${r.reason ? `<div class="reason">${escapeHtml(r.reason)}</div>` : ''}
           <div class="row-actions" style="margin-top:6px;">
             <button class="icon-btn" data-action="edit-entry" data-id="${r.id}" title="Edit">✎ Edit</button>
