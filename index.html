@@ -436,9 +436,9 @@
         <span style="font-size:10px; color:#9AA3AE;">📅 icon-ஐ தட்டி select பண்ணுங்க</span>
       </div>
       <div class="field">
-        <label>Date of Arrival <span class="tam">திரும்ப வரவேண்டிய தேதி</span></label>
+        <label>Date of Arrival <span class="tam">(auto, editable)</span></label>
         <input id="f_expected" type="date" />
-        <span style="font-size:10px; color:#9AA3AE;">📅 சொன்ன திரும்பும் தேதி (rejoin ஆகுமுன்)</span>
+        <span style="font-size:10px; color:#9AA3AE;">PLD + Start Date வெச்சு auto வரும், தேவைனா மாத்தலாம்</span>
       </div>
       <div class="field">
         <label>Rejoined Date <span class="tam">மீண்டும் சேர்ந்த நாள்</span></label>
@@ -545,6 +545,12 @@ function fmtDate(d){
   return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
 }
 
+function addDaysToDateStr(dateStr, days){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function recalcAll(){
   const total = daysBetweenInclusive(document.getElementById('f_start').value, document.getElementById('f_rejoin').value);
   document.getElementById('f_total').value = total === null ? '' : total + ' day(s)';
@@ -553,6 +559,11 @@ function recalcAll(){
   if(total !== null && !isNaN(pld)){
     const extra = Math.max(0, total - pld);
     document.getElementById('f_extra').value = extra;
+  }
+
+  const startVal = document.getElementById('f_start').value;
+  if(startVal && !isNaN(pld) && pld > 0){
+    document.getElementById('f_expected').value = addDaysToDateStr(startVal, pld - 1);
   }
 }
 
