@@ -987,14 +987,13 @@ function openHistory(name){
 
   const totalDays = records.reduce((sum, r) => sum + (daysBetweenInclusive(r.start, r.rejoin) || 0), 0);
   const totalExtra = records.reduce((sum, r) => sum + (parseInt(r.extra) || 0), 0);
-  const latestPld = records.find(r => r.pld)?.pld || null;
-  const overBy = latestPld !== null ? Math.max(0, totalDays - parseInt(latestPld)) : null;
+  const recordsOverPld = records.filter(r => (parseInt(r.extra) || 0) > 0).length;
 
   document.getElementById('historyStats').innerHTML = `
     <div class="stat"><div class="n">${records.length}</div><div class="l">Leave records</div></div>
     <div class="stat"><div class="n">${totalDays}</div><div class="l">Total days taken</div></div>
-    <div class="stat"><div class="n">${latestPld ?? '—'}</div><div class="l">PLD allowed</div></div>
-    <div class="stat"><div class="n" style="color:${overBy > 0 ? 'var(--stamp)' : 'var(--ok)'};">${overBy === null ? '—' : overBy}</div><div class="l">${overBy > 0 ? 'Days over PLD' : 'Within PLD'}</div></div>
+    <div class="stat"><div class="n" style="color:${totalExtra > 0 ? 'var(--stamp)' : 'var(--ok)'};">${totalExtra}</div><div class="l">Total extra days</div></div>
+    <div class="stat"><div class="n" style="color:${recordsOverPld > 0 ? 'var(--stamp)' : 'var(--ok)'};">${recordsOverPld}</div><div class="l">Leave(s) over PLD</div></div>
   `;
 
   const listEl = document.getElementById('historyList');
