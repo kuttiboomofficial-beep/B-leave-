@@ -351,8 +351,6 @@
     </div>
   </div>
 
-  <div id="overdueBanner"></div>
-
   <div class="summary" id="summary"></div>
 
   <div class="card">
@@ -504,6 +502,19 @@
       <input class="search" id="workerSearchBox" placeholder="Search worker..." style="width:140px;" />
     </div>
     <div id="workerTableWrap" style="padding: 10px 20px 16px;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="notArrivedModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h3>Not Yet Arrived</h3>
+        <div class="sub">இன்னும் திரும்பி வரல</div>
+      </div>
+      <button class="modal-close" id="closeNotArrived">✕</button>
+    </div>
+    <div id="notArrivedList" style="padding: 10px 20px 16px;"></div>
   </div>
 </div>
 
@@ -898,24 +909,20 @@ function getOverdueEntries(){
   return entries.filter(e => e.expected && !e.rejoin && e.expected < today);
 }
 
-function renderOverdueBanner(){
+function openNotArrived(){
   const overdue = getOverdueEntries().sort((a,b) => a.expected.localeCompare(b.expected));
-  const el = document.getElementById('overdueBanner');
+  const listEl = document.getElementById('notArrivedList');
   if(overdue.length === 0){
-    el.innerHTML = '';
-    return;
+    listEl.innerHTML = `<div class="empty">எல்லாரும் திரும்பி வந்துட்டாங்க 🎉<div style="font-size:12px; margin-top:4px;">No one overdue right now.</div></div>`;
+  } else {
+    listEl.innerHTML = overdue.map(e => `
+      <div class="overdue-row" data-action="open-history" data-name="${escapeHtml(e.name)}">
+        <span class="ob-name">${escapeHtml(e.name)} ${e.dept ? `<span class="dept-tag">${escapeHtml(e.dept)}</span>` : ''}</span>
+        <span class="ob-meta">Expected ${fmtDate(e.expected)} · ${daysOverdue(e.expected)}d late</span>
+      </div>
+    `).join('');
   }
-  el.innerHTML = `
-    <div class="overdue-banner">
-      <div class="ob-title">⚠ இன்னும் திரும்பி வரல — ${overdue.length} பேர் (Not Yet Arrived)</div>
-      ${overdue.map(e => `
-        <div class="overdue-row" data-action="open-history" data-name="${escapeHtml(e.name)}">
-          <span class="ob-name">${escapeHtml(e.name)} ${e.dept ? `<span class="dept-tag">${escapeHtml(e.dept)}</span>` : ''}</span>
-          <span class="ob-meta">Expected ${fmtDate(e.expected)} · ${daysOverdue(e.expected)}d late</span>
-        </div>
-      `).join('')}
-    </div>
-  `;
+  document.getElementById('notArrivedModal').classList.remove('hidden');
 }
 
 function renderSummary(){
@@ -929,13 +936,14 @@ function renderSummary(){
   const onLeaveTodayNames = new Set(entries.filter(isOnLeaveToday).map(e => e.name.toLowerCase()));
   const onLeaveToday = onLeaveTodayNames.size;
   const presentToday = Math.max(0, totalWorkers - onLeaveToday);
+  const overdueCount = getOverdueEntries().length;
 
   document.getElementById('summary').innerHTML = `
     <div class="stat"><div class="n">${totalWorkers}</div><div class="l">Total workers</div></div>
     <div class="stat" style="cursor:pointer;" data-action="open-workers-detail"><div class="n">📁</div><div class="l">Workers Details</div></div>
     <div class="stat" style="cursor:pointer;" data-action="open-history-picker"><div class="n">🕘</div><div class="l">Worker Leave History</div></div>
+    <div class="stat" style="cursor:pointer;" data-action="open-not-arrived"><div class="n" style="color:${overdueCount > 0 ? 'var(--stamp)' : 'var(--ink)'};">${overdueCount > 0 ? '⚠ ' + overdueCount : '📁'}</div><div class="l">Not Yet Arrived</div></div>
   `;
-  renderOverdueBanner();
 }
 
 let currentProfileWorkerId = null;
@@ -960,6 +968,7 @@ function openHistoryPicker(){
 function openHistory(name){
   document.getElementById('workersDetailModal').classList.add('hidden');
   document.getElementById('workerPickerModal').classList.add('hidden');
+  document.getElementById('notArrivedModal').classList.add('hidden');
 
   const records = entries
     .filter(e => e.name.toLowerCase() === name.toLowerCase())
@@ -1068,6 +1077,7 @@ document.addEventListener('click', (e) => {
   }
   else if(action === 'open-workers-detail') openWorkersDetail();
   else if(action === 'open-history-picker') openHistoryPicker();
+  else if(action === 'open-not-arrived') openNotArrived();
 });
 
 document.getElementById('closeWorkersDetail').addEventListener('click', () => {
@@ -1075,6 +1085,13 @@ document.getElementById('closeWorkersDetail').addEventListener('click', () => {
 });
 document.getElementById('workersDetailModal').addEventListener('click', (e) => {
   if(e.target.id === 'workersDetailModal') document.getElementById('workersDetailModal').classList.add('hidden');
+});
+
+document.getElementById('closeNotArrived').addEventListener('click', () => {
+  document.getElementById('notArrivedModal').classList.add('hidden');
+});
+document.getElementById('notArrivedModal').addEventListener('click', (e) => {
+  if(e.target.id === 'notArrivedModal') document.getElementById('notArrivedModal').classList.add('hidden');
 });
 
 function exportBackup(){
