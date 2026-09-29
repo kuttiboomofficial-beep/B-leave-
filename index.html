@@ -389,6 +389,14 @@
         <label>Phone Number <span class="tam">தொலைபேசி</span></label>
         <input id="w_phone" type="tel" placeholder="10-digit number" />
       </div>
+      <div class="field">
+        <label>Alternative Phone <span class="tam">மாற்று எண்</span></label>
+        <input id="w_altphone" type="tel" placeholder="10-digit number" />
+      </div>
+      <div class="field">
+        <label>Reference Person <span class="tam">யார் சேர்த்தார்</span></label>
+        <input id="w_reference" placeholder="Who referred/brought them" />
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn-ghost" id="cancelWorkerEdit" style="display:none;">Cancel</button>
@@ -454,6 +462,14 @@
       <div class="field">
         <label>Leave Code</label>
         <input id="f_code" placeholder="e.g. L-2" />
+      </div>
+      <div class="field">
+        <label>Informed? <span class="tam">தெரிவித்தாரா</span></label>
+        <select id="f_informed">
+          <option value="">Not specified</option>
+          <option value="yes">✓ Informed before leaving</option>
+          <option value="no">✗ Not informed</option>
+        </select>
       </div>
       <div class="field full">
         <label>Reason <span class="tam">காரணம்</span></label>
@@ -631,7 +647,7 @@ async function persistWorkers(){
 }
 
 function clearWorkerForm(){
-  ['w_name','w_dept','w_joined','w_phone'].forEach(id => document.getElementById(id).value = '');
+  ['w_name','w_dept','w_joined','w_phone','w_altphone','w_reference'].forEach(id => document.getElementById(id).value = '');
   editingWorkerId = null;
   document.getElementById('masterFormTitle').innerHTML = '+ Add Worker <span class="tam">தொழிலாளி விவரம்</span>';
   document.getElementById('cancelWorkerEdit').style.display = 'none';
@@ -649,7 +665,9 @@ document.getElementById('saveWorkerBtn').addEventListener('click', async () => {
     name,
     dept: document.getElementById('w_dept').value,
     joined: document.getElementById('w_joined').value,
-    phone: document.getElementById('w_phone').value.trim()
+    phone: document.getElementById('w_phone').value.trim(),
+    altPhone: document.getElementById('w_altphone').value.trim(),
+    reference: document.getElementById('w_reference').value.trim()
   };
 
   if(editingWorkerId){
@@ -672,6 +690,8 @@ function editWorker(id){
   document.getElementById('w_dept').value = w.dept;
   document.getElementById('w_joined').value = w.joined;
   document.getElementById('w_phone').value = w.phone;
+  document.getElementById('w_altphone').value = w.altPhone || '';
+  document.getElementById('w_reference').value = w.reference || '';
   editingWorkerId = id;
   document.getElementById('masterFormTitle').innerHTML = '✎ Edit Worker <span class="tam">திருத்து</span>';
   document.getElementById('cancelWorkerEdit').style.display = 'inline-block';
@@ -708,6 +728,8 @@ function renderWorkers(){
       <td>${w.dept ? `<span class="dept-tag">${escapeHtml(w.dept)}</span>` : '—'}</td>
       <td>${w.joined ? fmtDate(w.joined) : '—'}</td>
       <td>${escapeHtml(w.phone) || '—'}</td>
+      <td>${escapeHtml(w.altPhone) || '—'}</td>
+      <td>${escapeHtml(w.reference) || '—'}</td>
       <td>
         <div class="row-actions">
           <button class="icon-btn" data-action="edit-worker" data-id="${w.id}" title="Edit">✎</button>
@@ -718,10 +740,12 @@ function renderWorkers(){
   `).join('');
 
   wrap.innerHTML = `
-    <table>
-      <thead><tr><th>Name</th><th>Department</th><th>Joined</th><th>Phone</th><th></th></tr></thead>
+    <div style="overflow-x:auto;">
+    <table style="min-width:680px;">
+      <thead><tr><th>Name</th><th>Department</th><th>Joined</th><th>Phone</th><th>Alt. Phone</th><th>Reference</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    </div>
   `;
 }
 
@@ -810,7 +834,7 @@ function setStatus(msg){
 }
 
 function clearForm(){
-  ['f_name','f_dept','f_pld','f_start','f_expected','f_rejoin','f_total','f_extra','f_code','f_reason'].forEach(id => document.getElementById(id).value = '');
+  ['f_name','f_dept','f_pld','f_start','f_expected','f_rejoin','f_total','f_extra','f_code','f_informed','f_reason'].forEach(id => document.getElementById(id).value = '');
   setWorkerNameDisplay('');
   editingId = null;
   document.getElementById('formTitle').innerHTML = '+ New Leave Entry <span class="tam">புதிய பதிவு</span>';
@@ -834,6 +858,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     rejoin: document.getElementById('f_rejoin').value,
     extra: document.getElementById('f_extra').value,
     code: document.getElementById('f_code').value.trim(),
+    informed: document.getElementById('f_informed').value,
     reason: document.getElementById('f_reason').value.trim()
   };
 
@@ -861,6 +886,7 @@ function editEntry(id){
   document.getElementById('f_rejoin').value = en.rejoin;
   document.getElementById('f_extra').value = en.extra;
   document.getElementById('f_code').value = en.code;
+  document.getElementById('f_informed').value = en.informed || '';
   document.getElementById('f_reason').value = en.reason;
   recalcAll();
   editingId = id;
@@ -983,6 +1009,8 @@ function openHistory(name){
   if(master?.dept || depts.length) subParts.push(master?.dept || depts.join(', '));
   if(master?.joined) subParts.push('Joined ' + fmtDate(master.joined));
   if(master?.phone) subParts.push(master.phone);
+  if(master?.altPhone) subParts.push('Alt: ' + master.altPhone);
+  if(master?.reference) subParts.push('Ref: ' + master.reference);
   document.getElementById('historyDept').textContent = subParts.length ? subParts.join(' · ') : 'No worker details on record';
 
   const totalDays = records.reduce((sum, r) => sum + (daysBetweenInclusive(r.start, r.rejoin) || 0), 0);
@@ -1013,6 +1041,8 @@ function openHistory(name){
             <span>PLD: ${r.pld || '—'}</span>
             <span>Extra: ${r.extra || 0}d</span>
             <span>Code: ${r.code || '—'}</span>
+            ${r.informed === 'yes' ? `<span style="color:var(--ok); font-weight:600;">✓ Informed</span>` : ''}
+            ${r.informed === 'no' ? `<span style="color:var(--stamp); font-weight:600;">✗ Not Informed</span>` : ''}
           </div>
           ${r.expected ? `<div class="meta" style="margin-top:2px;"><span style="${isOverdue ? 'color:var(--stamp); font-weight:600;' : ''}">${isOverdue ? '⚠ ' : ''}Date of Arrival: ${fmtDate(r.expected)}${isOverdue ? ' — ' + daysOverdue(r.expected) + 'd overdue' : ''}</span></div>` : ''}
           ${r.reason ? `<div class="reason">${escapeHtml(r.reason)}</div>` : ''}
