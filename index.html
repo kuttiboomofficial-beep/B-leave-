@@ -6,8 +6,8 @@
 <title>Leave Register</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#25344A">
-<link rel="apple-touch-icon" href="icon-192.png?v=25">
-<link rel="icon" type="image/png" href="icon-192.png?v=25">
+<link rel="apple-touch-icon" href="icon-192.png?v=28">
+<link rel="icon" type="image/png" href="icon-192.png?v=28">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -419,7 +419,7 @@ body.lang-en .modal-tamil { display:none !important; }
 </head>
 <body>
 <aside class="app-sidebar">
-  <div class="side-logo"><img src="icon-192.png?v=25" alt="Leave Register"></div>
+  <div class="side-logo"><img src="icon-192.png?v=28" alt="Leave Register"></div>
   <nav class="side-nav">
     <button class="side-item active" data-nav="dashboard">⌂<span>Dashboard</span></button>
     <button class="side-item" data-action="open-workers-detail">👥<span>Workers</span></button>
@@ -437,7 +437,7 @@ body.lang-en .modal-tamil { display:none !important; }
 <div class="app-shell">
 <div class="topbar">
   <div class="topbar-brand">
-    <img src="icon-192.png?v=25" alt="Leave Register">
+    <img src="icon-192.png?v=28" alt="Leave Register">
     <div><h1>Leave Register</h1><div class="topbar-tamil">விடுப்பு பதிவு</div></div>
   </div>
   <div class="topbar-actions">
@@ -638,7 +638,10 @@ body.lang-en .modal-tamil { display:none !important; }
         <h3>Workers Details</h3>
         <div class="sub modal-tamil">தொழிலாளிகள் விவரம்</div>
       </div>
-      <button class="modal-close" id="closeWorkersDetail">✕</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn-primary" id="printBioDataBtn" type="button">🖨 Bio Data Form</button>
+        <button class="modal-close" id="closeWorkersDetail">✕</button>
+      </div>
     </div>
     <div class="worker-search-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding: 12px 20px 0;">
       <span style="font-size:12px; color:var(--ink-soft);"><strong id="workerCount" style="color:var(--navy); font-family:'Special Elite',monospace;">0</strong> workers on record</span>
@@ -1152,6 +1155,66 @@ async function deleteEntry(id){
   render();
   if(historyOpen) openHistory(wasOpenFor);
 }
+
+function printWorkerBioDataForm(){
+  const win = window.open('', '_blank', 'width=900,height=1000');
+  if(!win){ setStatus('Please allow pop-ups to print.'); return; }
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Worker Bio Data Form</title>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:12mm;color:#111;background:#fff}
+    .sheet{max-width:190mm;margin:0 auto}
+    h1{text-align:center;font-size:22px;margin:0 0 3px;font-weight:700}
+    .sub{text-align:center;font-size:13px;margin-bottom:16px;color:#444}
+    .top{display:grid;grid-template-columns:1fr 38mm;gap:14mm;align-items:start}
+    .photo{height:48mm;border:1.5px solid #333;display:flex;align-items:center;justify-content:center;font-size:12px;color:#555}
+    .line{display:flex;align-items:end;gap:7px;margin:0 0 9px;font-size:12px}
+    .label{font-weight:700;min-width:34mm}
+    .blank{border-bottom:1px solid #222;flex:1;height:17px}
+    .section{margin-top:14px;border-top:1.5px solid #222;padding-top:8px}
+    .section-title{font-weight:700;font-size:14px;margin-bottom:9px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:0 12mm}
+    .address{height:24mm;border:1px solid #333;margin-top:4px;margin-bottom:10px}
+    table{width:100%;border-collapse:collapse;margin-top:5px}
+    th,td{border:1px solid #333;height:11mm;padding:5px;font-size:11px;text-align:left}
+    th{font-weight:700;text-align:center}
+    .refs{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12mm}
+    .footer{margin-top:18px;font-size:10px;color:#555;text-align:center}
+    @media print{body{padding:8mm}.sheet{max-width:none}}
+  </style></head><body><div class="sheet">
+  <h1>WORKER BIO DATA / EMPLOYEE RECORD</h1><div class="sub">Employee Information Form</div>
+  <div class="top"><div>
+    <div class="line"><span class="label">Application No.</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Name</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Father's Name</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Age</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Sex</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Date of Birth</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Phone Number</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Marital Status</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Join Date</span><span class="blank"></span></div>
+    <div class="line"><span class="label">Department</span><span class="blank"></span></div>
+  </div><div class="photo">WORKER PHOTO</div></div>
+  <div class="section"><div class="section-title">Identity & Personal Details</div><div class="two">
+    <div><div class="line"><span class="label">Home State</span><span class="blank"></span></div></div>
+    <div><div class="line"><span class="label">Qualification</span><span class="blank"></span></div></div>
+    <div><div class="line"><span class="label">Language Known</span><span class="blank"></span></div></div>
+    <div><div class="line"><span class="label">ID Proof / No.</span><span class="blank"></span></div></div>
+  </div></div>
+  <div class="section"><div class="section-title">Present Address</div><div class="address"></div></div>
+  <div class="section"><div class="section-title">Permanent Address</div><div class="address"></div></div>
+  <div class="section"><div class="section-title">Details of Family Members (Dependents)</div>
+    <table><thead><tr><th style="width:30%">Name</th><th style="width:12%">Age</th><th style="width:22%">Relationship</th><th style="width:21%">Occupation</th><th style="width:15%">Phone No.</th></tr></thead>
+    <tbody><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
+  </div>
+  <div class="section"><div class="section-title">Reference</div><div class="refs"><div class="line"><span class="label">Name</span><span class="blank"></span></div><div class="line"><span class="label">Phone</span><span class="blank"></span></div></div></div>
+  <div class="section"><div class="two"><div class="line"><span class="label">Employee Signature</span><span class="blank"></span></div><div class="line"><span class="label">Date</span><span class="blank"></span></div></div></div>
+  <div class="footer">Printed from Leave Register • Fill this form manually after printing</div>
+  </div></body></html>`);
+  win.document.close(); win.focus(); setTimeout(()=>win.print(),250);
+}
+
+document.getElementById('printBioDataBtn').addEventListener('click', printWorkerBioDataForm);
 
 document.getElementById('workerSearchBox').addEventListener('input', renderWorkers);
 
