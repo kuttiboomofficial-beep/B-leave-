@@ -639,7 +639,7 @@ body.lang-en .modal-tamil { display:none !important; }
         <div class="sub modal-tamil">தொழிலாளிகள் விவரம்</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <button class="btn-primary" id="printBioDataBtn" type="button">🖨 Bio Data Form</button>
+        <button class="btn-primary" id="printBioDataBtn" type="button">🖨 Print Bio Data</button>
         <button class="modal-close" id="closeWorkersDetail">✕</button>
       </div>
     </div>
@@ -983,6 +983,7 @@ function renderWorkers(){
       <td>${escapeHtml(w.reference) || '—'}</td>
       <td>
         <div class="row-actions">
+          <button class="icon-btn" data-action="print-worker-bio" data-id="${w.id}" title="Print Bio Data">🖨</button>
           <button class="icon-btn" data-action="edit-worker" data-id="${w.id}" title="Edit">✎</button>
           <button class="icon-btn" data-action="delete-worker" data-id="${w.id}" title="Delete">✕</button>
         </div>
@@ -1054,6 +1055,11 @@ function pickWorker(id){
   if(pickerMode === 'history'){
     document.getElementById('workerPickerModal').classList.add('hidden');
     openHistory(w.name);
+    return;
+  }
+  if(pickerMode === 'bio'){
+    document.getElementById('workerPickerModal').classList.add('hidden');
+    printWorkerBioDataForm(w.id);
     return;
   }
   document.getElementById('f_name').value = w.name;
@@ -1156,65 +1162,105 @@ async function deleteEntry(id){
   if(historyOpen) openHistory(wasOpenFor);
 }
 
-function printWorkerBioDataForm(){
+function printWorkerBioDataForm(workerId){
+  const worker = workerId ? workers.find(w => w.id === workerId) : null;
+  if(!worker){
+    pickerMode = 'bio';
+    document.getElementById('pickerTitle').textContent = 'Print Worker Bio Data';
+    document.getElementById('pickerSub').textContent = 'Select a worker to print the bio data form.';
+    document.getElementById('pickerSearch').value = '';
+    renderPickerList('');
+    document.getElementById('workerPickerModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('pickerSearch').focus(), 50);
+    return;
+  }
+
+  const refWorker = worker.referenceId ? workers.find(w => w.id === worker.referenceId) : null;
+  const refName = worker.reference || '';
+  const refPhone = refWorker?.phone || '';
+  const photo = worker.photo && String(worker.photo).startsWith('data:image/') ? worker.photo : '';
   const win = window.open('', '_blank', 'width=900,height=1000');
   if(!win){ setStatus('Please allow pop-ups to print.'); return; }
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Worker Bio Data Form</title>
+
+  const auto = (label, value, cls='') => `<div class="line ${cls}"><span class="label">${label}</span><span class="value">${value ? escapeHtml(String(value)) : ''}</span></div>`;
+  const photoHtml = photo ? `<img src="${photo}" alt="Worker photo">` : `<span>WORKER PHOTO</span>`;
+
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Worker Bio Data - ${escapeHtml(worker.name)}</title>
   <style>
+    @page{size:A4 portrait;margin:0}
     *{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:12mm;color:#111;background:#fff}
-    .sheet{max-width:190mm;margin:0 auto}
-    h1{text-align:center;font-size:22px;margin:0 0 3px;font-weight:700}
-    .sub{text-align:center;font-size:13px;margin-bottom:16px;color:#444}
-    .top{display:grid;grid-template-columns:1fr 38mm;gap:14mm;align-items:start}
-    .photo{height:48mm;border:1.5px solid #333;display:flex;align-items:center;justify-content:center;font-size:12px;color:#555}
-    .line{display:flex;align-items:end;gap:7px;margin:0 0 9px;font-size:12px}
-    .label{font-weight:700;min-width:34mm}
-    .blank{border-bottom:1px solid #222;flex:1;height:17px}
-    .section{margin-top:14px;border-top:1.5px solid #222;padding-top:8px}
-    .section-title{font-weight:700;font-size:14px;margin-bottom:9px}
-    .two{display:grid;grid-template-columns:1fr 1fr;gap:0 12mm}
-    .address{height:24mm;border:1px solid #333;margin-top:4px;margin-bottom:10px}
-    table{width:100%;border-collapse:collapse;margin-top:5px}
-    th,td{border:1px solid #333;height:11mm;padding:5px;font-size:11px;text-align:left}
-    th{font-weight:700;text-align:center}
-    .refs{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12mm}
-    .footer{margin-top:18px;font-size:10px;color:#555;text-align:center}
-    @media print{body{padding:8mm}.sheet{max-width:none}}
+    html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
+    body{font-size:10px}
+    .sheet{width:210mm;height:297mm;padding:7mm 9mm 6mm;margin:0 auto;overflow:hidden}
+    h1{text-align:center;font-size:16px;line-height:1.15;margin:0;font-weight:800}
+    .sub{text-align:center;font-size:9px;margin:1mm 0 3mm;color:#444}
+    .top{display:grid;grid-template-columns:1fr 35mm;gap:6mm;align-items:start}
+    .photo{width:35mm;height:44mm;border:1.2px solid #222;display:flex;align-items:center;justify-content:center;font-size:9px;color:#555;text-align:center;overflow:hidden}
+    .photo img{width:100%;height:100%;object-fit:cover}
+    .line{display:flex;align-items:flex-end;gap:3mm;height:6.2mm;margin-bottom:1.2mm}
+    .label{font-weight:700;min-width:31mm;white-space:nowrap}
+    .value{flex:1;min-width:0;min-height:4.6mm;border-bottom:1px solid #222;padding:0 1mm;font-size:10px;line-height:4.6mm;white-space:nowrap;overflow:hidden}
+    .manual .value{color:#111}
+    .section{margin-top:2.3mm;border-top:1px solid #222;padding-top:1.7mm}
+    .section-title{font-weight:800;font-size:10px;margin-bottom:1.5mm}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:0 7mm}
+    .address{height:17mm;border:1px solid #333;margin-top:1mm}
+    table{width:100%;border-collapse:collapse;margin-top:1mm;table-layout:fixed}
+    th,td{border:1px solid #333;height:8mm;padding:1.5mm;font-size:8.5px;text-align:left}
+    th{font-weight:800;text-align:center;height:7mm}
+    .refs{display:grid;grid-template-columns:1fr 1fr;gap:7mm}
+    .note{font-size:7.5px;color:#555;margin-top:1.5mm}
+    .manual-label{font-size:8px;color:#555;font-weight:600}
+    .footer{margin-top:2.2mm;font-size:7px;color:#666;text-align:center}
+    @media print{.sheet{margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body><div class="sheet">
   <h1>WORKER BIO DATA / EMPLOYEE RECORD</h1><div class="sub">Employee Information Form</div>
   <div class="top"><div>
-    <div class="line"><span class="label">Application No.</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Name</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Father's Name</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Age</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Sex</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Date of Birth</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Phone Number</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Marital Status</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Join Date</span><span class="blank"></span></div>
-    <div class="line"><span class="label">Department</span><span class="blank"></span></div>
-  </div><div class="photo">WORKER PHOTO</div></div>
+    ${auto('Application No.','')} 
+    ${auto('Name',worker.name)}
+    ${auto("Father's Name",'','manual')}
+    ${auto('Age','','manual')}
+    ${auto('Sex','','manual')}
+    ${auto('Date of Birth','','manual')}
+    ${auto('Phone Number',worker.phone)}
+    ${auto('Alternative Phone',worker.altPhone)}
+    ${auto('Marital Status','','manual')}
+    ${auto('Join Date',worker.joined ? fmtDate(worker.joined) : '')}
+    ${auto('Department',worker.dept)}
+  </div><div class="photo">${photoHtml}</div></div>
+
   <div class="section"><div class="section-title">Identity & Personal Details</div><div class="two">
-    <div><div class="line"><span class="label">Home State</span><span class="blank"></span></div></div>
-    <div><div class="line"><span class="label">Qualification</span><span class="blank"></span></div></div>
-    <div><div class="line"><span class="label">Language Known</span><span class="blank"></span></div></div>
-    <div><div class="line"><span class="label">ID Proof / No.</span><span class="blank"></span></div></div>
+    ${auto('Home State','','manual')}
+    ${auto('Qualification','','manual')}
+    ${auto('Language Known','','manual')}
+    ${auto('ID Proof / No.','','manual')}
   </div></div>
+
   <div class="section"><div class="section-title">Present Address</div><div class="address"></div></div>
   <div class="section"><div class="section-title">Permanent Address</div><div class="address"></div></div>
+
   <div class="section"><div class="section-title">Details of Family Members (Dependents)</div>
-    <table><thead><tr><th style="width:30%">Name</th><th style="width:12%">Age</th><th style="width:22%">Relationship</th><th style="width:21%">Occupation</th><th style="width:15%">Phone No.</th></tr></thead>
-    <tbody><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
+    <table><thead><tr><th style="width:28%">Name</th><th style="width:10%">Age</th><th style="width:22%">Relationship</th><th style="width:22%">Occupation</th><th style="width:18%">Phone No.</th></tr></thead>
+    <tbody><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
   </div>
-  <div class="section"><div class="section-title">Reference</div><div class="refs"><div class="line"><span class="label">Name</span><span class="blank"></span></div><div class="line"><span class="label">Phone</span><span class="blank"></span></div></div></div>
-  <div class="section"><div class="two"><div class="line"><span class="label">Employee Signature</span><span class="blank"></span></div><div class="line"><span class="label">Date</span><span class="blank"></span></div></div></div>
-  <div class="footer">Printed from Leave Register • Fill this form manually after printing</div>
+
+  <div class="section"><div class="section-title">Reference</div><div class="refs">
+    ${auto('Name',refName)}
+    ${auto('Phone',refPhone)}
+  </div></div>
+
+  <div class="section"><div class="two">
+    ${auto('Employee Signature','','manual')}
+    ${auto('Date','','manual')}
+  </div></div>
+  <div class="footer">Printed from Leave Register • Manual fields are intentionally left blank for handwriting</div>
   </div></body></html>`);
-  win.document.close(); win.focus(); setTimeout(()=>win.print(),250);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>win.print(),250);
 }
 
-document.getElementById('printBioDataBtn').addEventListener('click', printWorkerBioDataForm);
+document.getElementById('printBioDataBtn').addEventListener('click', () => printWorkerBioDataForm());
 
 document.getElementById('workerSearchBox').addEventListener('input', renderWorkers);
 
@@ -1433,6 +1479,7 @@ document.addEventListener('click', (e) => {
 
   if(action === 'open-history') openHistory(name);
   else if(action === 'edit-worker') editWorker(id);
+  else if(action === 'print-worker-bio') printWorkerBioDataForm(id);
   else if(action === 'delete-worker') deleteWorker(id);
   else if(action === 'pick-worker') pickWorker(id);
   else if(action === 'pick-custom') pickCustomName();
