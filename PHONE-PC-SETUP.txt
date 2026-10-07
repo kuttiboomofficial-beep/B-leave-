@@ -1,0 +1,19 @@
+LEAVE REGISTER v30 - PHONE + COMPUTER (SAME WI-FI)
+
+1. Install Node.js LTS on the computer (only required once).
+2. Double-click start-server.bat.
+3. Keep the black server window open.
+4. The window will show a Phone address such as:
+   http://192.168.1.10:3000
+5. Connect the phone to the SAME Wi-Fi as the computer.
+6. Open that Phone address in Chrome on the phone.
+7. Add Worker from the phone and use Take Photo. Save Worker.
+8. The computer and phone use the same local worker/leave data.
+
+NO monthly fee. NO cloud subscription. Internet is not required after Node.js is installed.
+
+Important:
+- The computer must remain ON while the phone is being used.
+- Both devices must be on the same Wi-Fi. A phone hotspot can also be used if the computer joins that hotspot.
+- The local data file is stored inside the app's data folder. Use the app Backup feature regularly for extra safety.
+- If Windows Firewall asks about Node.js, allow it on Private networks so the phone can connect.

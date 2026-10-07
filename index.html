@@ -740,42 +740,128 @@ document.getElementById('f_start').addEventListener('change', recalcAll);
 document.getElementById('f_rejoin').addEventListener('change', recalcAll);
 document.getElementById('f_pld').addEventListener('input', recalcAll);
 
+let networkMode = false;
+let networkInfo = null;
+let lastServerSnapshot = '';
+
+async function detectNetworkServer(){
+  if(location.protocol !== 'http:' && location.protocol !== 'https:') return false;
+  try{
+    const r = await fetch('/api/info', {cache:'no-store'});
+    if(!r.ok) return false;
+    networkInfo = await r.json();
+    networkMode = true;
+    updateNetworkStatus();
+    return true;
+  }catch(e){
+    networkMode = false;
+    updateNetworkStatus();
+    return false;
+  }
+}
+
 async function loadAll(){
-  try{
-  }catch(e){ /* not set yet */ }
-
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    entries = raw ? JSON.parse(raw) : [];
-  }catch(e){
-    entries = [];
+  const onlineServer = await detectNetworkServer();
+  if(onlineServer){
+    try{
+      const r = await fetch('/api/data', {cache:'no-store'});
+      const data = await r.json();
+      entries = Array.isArray(data.entries) ? data.entries : [];
+      workers = Array.isArray(data.workers) ? data.workers : [];
+      lastServerSnapshot = JSON.stringify({workers,entries});
+      // Keep a local safety copy on the device too.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      localStorage.setItem(WORKERS_KEY, JSON.stringify(workers));
+    }catch(e){
+      networkMode = false;
+      loadLocalData();
+    }
+  }else{
+    loadLocalData();
   }
-
-  try{
-    const rawW = localStorage.getItem(WORKERS_KEY);
-    workers = rawW ? JSON.parse(rawW) : [];
-  }catch(e){
-    workers = [];
-  }
-
   render();
+  if(networkMode) startNetworkPolling();
+}
+
+function loadLocalData(){
+  try{ const raw = localStorage.getItem(STORAGE_KEY); entries = raw ? JSON.parse(raw) : []; }catch(e){ entries=[]; }
+  try{ const rawW = localStorage.getItem(WORKERS_KEY); workers = rawW ? JSON.parse(rawW) : []; }catch(e){ workers=[]; }
+}
+
+async function persistServerData(){
+  const payload = {workers, entries};
+  try{
+    const r = await fetch('/api/data', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    if(!r.ok) throw new Error('server save failed');
+    lastServerSnapshot = JSON.stringify(payload);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    localStorage.setItem(WORKERS_KEY, JSON.stringify(workers));
+  }catch(e){
+    setStatus('Network save failed — check Wi-Fi connection.');
+  }
 }
 
 async function persistEntries(){
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  }catch(e){
-    setStatus('Save failed — storage may be full.');
-  }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }catch(e){}
+  if(networkMode) await persistServerData();
 }
 
 async function persistWorkers(){
-  try{
-    localStorage.setItem(WORKERS_KEY, JSON.stringify(workers));
-  }catch(e){
-    setStatus('Save failed — storage may be full.');
-  }
+  try{ localStorage.setItem(WORKERS_KEY, JSON.stringify(workers)); }catch(e){}
+  if(networkMode) await persistServerData();
 }
+
+function updateNetworkStatus(){
+  const b=document.getElementById('networkStatusBtn');
+  if(!b) return;
+  b.textContent = networkMode ? '📶 Local Network: ON' : '📶 Local Network';
+  b.style.background = networkMode ? '#E9F7EF' : '';
+  b.style.color = networkMode ? '#176B45' : '';
+}
+
+let networkPollTimer = null;
+function startNetworkPolling(){
+  clearInterval(networkPollTimer);
+  networkPollTimer = setInterval(async ()=>{
+    if(!networkMode) return;
+    try{
+      const r=await fetch('/api/data',{cache:'no-store'});
+      if(!r.ok) throw new Error();
+      const data=await r.json();
+      const snap=JSON.stringify({workers:data.workers||[],entries:data.entries||[]});
+      if(snap!==lastServerSnapshot){
+        workers=Array.isArray(data.workers)?data.workers:[];
+        entries=Array.isArray(data.entries)?data.entries:[];
+        lastServerSnapshot=snap;
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(entries));
+        localStorage.setItem(WORKERS_KEY,JSON.stringify(workers));
+        render();
+      }
+    }catch(e){
+      networkMode=false; updateNetworkStatus();
+    }
+  },3000);
+}
+
+function openNetworkInfo(){
+  const body=document.getElementById('utilityBody');
+  const title=document.getElementById('utilityTitle');
+  const sub=document.getElementById('utilitySub');
+  title.textContent='Phone + Computer';
+  sub.textContent='Same Wi-Fi Local Network';
+  const host=networkInfo?.ip || location.hostname;
+  const port=networkInfo?.port || location.port || '3000';
+  const url=`http://${host}:${port}`;
+  body.innerHTML=`<div style="padding:20px">
+    <div class="utility-card" style="margin-bottom:14px"><h4>Connection</h4><div class="big" style="font-size:22px;color:#176B45">${networkMode?'CONNECTED':'LOCAL ONLY'}</div><div style="margin-top:8px;color:var(--ink-soft)">Computer and phone must be on the same Wi-Fi.</div></div>
+    <div class="utility-card"><h4>Open this address on your phone</h4><div style="font-family:monospace;font-size:18px;word-break:break-all;margin:12px 0">${url}</div><button class="btn-primary" id="copyPhoneUrl">📋 Copy Address</button></div>
+    <div style="padding-top:14px;color:var(--ink-soft);font-size:13px;line-height:1.6">📷 Phone camera → Add Worker → Save → data and photo appear on the computer automatically.<br>💾 No cloud subscription or monthly payment. Data stays on this local computer.</div>
+  </div>`;
+  document.getElementById('copyPhoneUrl').onclick=async()=>{try{await navigator.clipboard.writeText(url);setStatus('Phone address copied.');}catch(e){setStatus(url);}};
+  document.getElementById('utilityModal').classList.remove('hidden');
+}
+
+document.getElementById('networkStatusBtn').addEventListener('click',openNetworkInfo);
 
 function renderReferenceOptions(selectedId='', selectedName=''){
   const sel = document.getElementById('w_reference_select');
@@ -1649,7 +1735,8 @@ function openUtility(type){
     document.getElementById('utilityRestoreInput').addEventListener('change', handleRestoreFile);
   } else if(type==='settings'){
     title.textContent='Settings'; sub.textContent=(localStorage.getItem('leaveRegisterLanguage')==='en')?'Preferences':'அமைப்புகள்';
-    body.innerHTML=`<div class="settings-list"><div class="setting-row"><div><label>Language</label><small>Choose the display language.</small></div><select id="settingLanguage"><option value="en-ta">English + தமிழ்</option><option value="en">English</option></select></div><div class="setting-row"><div><label>Auto status update</label><small id="settingAutoText"></small></div><strong style="color:var(--ok)">ON</strong></div><div class="setting-row"><div><label>Local data storage</label><small>Data stays on this device/browser.</small></div><strong>ON</strong></div></div>`;
+    body.innerHTML=`<div class="settings-list"><div class="setting-row"><div><label>Phone + Computer Local Network</label><small>${networkMode ? 'Connected — phone and computer can share the same worker data.' : 'Run the local server and open the app on the phone using the same Wi-Fi.'}</small></div><button class="btn-primary" id="openNetworkInfoFromSettings" type="button">📶 Connect</button></div><div class="setting-row"><div><label>Language</label><small>Choose the display language.</small></div><select id="settingLanguage"><option value="en-ta">English + தமிழ்</option><option value="en">English</option></select></div><div class="setting-row"><div><label>Auto status update</label><small id="settingAutoText"></small></div><strong style="color:var(--ok)">ON</strong></div><div class="setting-row"><div><label>Local data storage</label><small>Data stays on this device/browser.</small></div><strong>ON</strong></div></div>`;
+    document.getElementById('openNetworkInfoFromSettings').onclick=openNetworkInfo;
     const sel=document.getElementById('settingLanguage');
     sel.value=localStorage.getItem('leaveRegisterLanguage')||'en-ta';
     const refreshSettingsText=()=>{ document.getElementById('settingAutoText').textContent = sel.value==='en' ? 'Arrival date passed → automatically moves to Not Yet Arrived.' : 'Arrival date கடந்தால் Not Yet Arrived-க்கு மாற்றும்.'; };
