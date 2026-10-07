@@ -6,8 +6,8 @@
 <title>Leave Register</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#25344A">
-<link rel="apple-touch-icon" href="icon-192.png?v=18">
-<link rel="icon" type="image/png" href="icon-192.png?v=18">
+<link rel="apple-touch-icon" href="icon-192.png?v=19">
+<link rel="icon" type="image/png" href="icon-192.png?v=19">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -373,13 +373,23 @@ body{padding:0;background:var(--modern-bg);background-image:none;color:#17233d;f
 button{border-radius:8px;}
 .btn-primary{background:#1677e8;padding:12px 24px;font-size:15px;}
 .btn-ghost{border-color:#d6deea;background:#fff;padding:10px 18px;}
+
+.utility-modal .modal{max-width:900px; width:min(94vw,900px); max-height:88vh; overflow:auto;}
+.utility-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px 20px;}
+.utility-card{border:1px solid #e3e8f0;border-radius:12px;padding:16px;background:#fff;box-shadow:0 4px 14px rgba(13,39,77,.06)}
+.utility-card h4{margin:0 0 7px;color:var(--navy);font-size:15px}.utility-card .big{font-size:28px;font-weight:800;color:var(--ink)}
+.utility-actions{display:flex;gap:10px;flex-wrap:wrap;padding:0 20px 18px}.utility-actions button,.utility-actions label{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border-radius:9px;border:1px solid #d6deea;background:#f7f9fc;color:var(--navy);font-weight:700;cursor:pointer}
+.utility-table{width:100%;border-collapse:collapse;font-size:13px}.utility-table th,.utility-table td{padding:9px 8px;border-bottom:1px solid #edf0f5;text-align:left}.utility-table th{color:var(--navy);background:#f7f9fc}
+.settings-list{padding:10px 20px 20px}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:14px 0;border-bottom:1px solid #edf0f5}.setting-row label{font-weight:700;color:var(--navy)}.setting-row small{display:block;color:var(--ink-soft);font-weight:400;margin-top:3px}.setting-row select{min-width:150px;padding:9px;border:1px solid #d6deea;border-radius:8px}
+@media(max-width:720px){.utility-grid{grid-template-columns:1fr 1fr}.utility-modal .modal{width:96vw}.utility-table{font-size:12px}}
+
 @media(max-width:1050px){.summary{grid-template-columns:repeat(3,1fr)}.app-sidebar{width:76px}.app-shell{margin-left:76px}.side-item{justify-content:center;padding:12px}.side-item span{display:none}.side-logo img{width:54px;height:54px}.topbar-brand h1{font-size:24px}.topbar-brand div div{font-size:14px}}
 @media(max-width:720px){.app-sidebar{display:none}.app-shell{margin-left:0}.topbar{height:auto;min-height:78px;padding:12px 14px}.topbar-brand img{width:46px;height:46px}.topbar-brand h1{font-size:21px}.topbar-brand div div{font-size:13px}.topbar-actions{gap:6px}.top-btn{height:40px;padding:0 10px;font-size:12px}.settings-btn{height:40px;width:40px}.main-content{padding:14px}.summary{grid-template-columns:1fr 1fr;gap:10px}.stat{height:125px;padding:14px}.stat .n{font-size:24px}.stat .l{font-size:12px}.stat:after{right:9px;width:28px;height:28px;font-size:20px}.card{padding:18px 14px 4px}.card h2{font-size:20px}.grid{grid-template-columns:1fr}.cover{display:none!important}}
 </style>
 </head>
 <body>
 <aside class="app-sidebar">
-  <div class="side-logo"><img src="icon-192.png?v=18" alt="Leave Register"></div>
+  <div class="side-logo"><img src="icon-192.png?v=19" alt="Leave Register"></div>
   <nav class="side-nav">
     <button class="side-item active" data-nav="dashboard">⌂<span>Dashboard</span></button>
     <button class="side-item" data-action="open-workers-detail">👥<span>Workers</span></button>
@@ -397,7 +407,7 @@ button{border-radius:8px;}
 <div class="app-shell">
 <div class="topbar">
   <div class="topbar-brand">
-    <img src="icon-192.png?v=18" alt="Leave Register">
+    <img src="icon-192.png?v=19" alt="Leave Register">
     <div><h1>Leave Register</h1><div>விடுப்பு பதிவு</div></div>
   </div>
   <div class="topbar-actions">
@@ -542,6 +552,17 @@ button{border-radius:8px;}
   <div id="statusMsg" class="status-msg"></div>
 
 </div>
+</div>
+
+
+<div class="modal-overlay hidden utility-modal" id="utilityModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h3 id="utilityTitle">Reports</h3><div class="sub" id="utilitySub">Leave Register</div></div>
+      <button class="modal-close" id="closeUtility">✕</button>
+    </div>
+    <div id="utilityBody"></div>
+  </div>
 </div>
 
 <div class="modal-overlay hidden" id="historyModal">
@@ -1223,6 +1244,64 @@ document.getElementById('workersAwayModal').addEventListener('click', (e) => {
   if(e.target.id === 'workersAwayModal') document.getElementById('workersAwayModal').classList.add('hidden');
 });
 
+
+function setActiveNav(key){
+  document.querySelectorAll('.side-item').forEach(b => b.classList.toggle('active', b.dataset.nav === key));
+}
+function openUtility(type){
+  const modal=document.getElementById('utilityModal');
+  const title=document.getElementById('utilityTitle');
+  const sub=document.getElementById('utilitySub');
+  const body=document.getElementById('utilityBody');
+  if(type==='reports'){
+    const totalWorkers=workers.length;
+    const totalEntries=entries.length;
+    const away=getWorkersAwayEntries().length;
+    const overdue=getOverdueEntries().length;
+    const totalDays=entries.reduce((sum,e)=>sum+(daysBetweenInclusive(e.start,e.rejoin)||0),0);
+    const rows=workers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(w=>{
+      const rec=entries.filter(e=>(e.name||'').toLowerCase()===(w.name||'').toLowerCase());
+      const last=rec.slice().sort((a,b)=>(b.start||'').localeCompare(a.start||''))[0];
+      const active=getCurrentLeaveEntries().find(e=>(e.name||'').toLowerCase()===(w.name||'').toLowerCase());
+      const status=active?(getOverdueEntries().some(e=>e.id===active.id)?'Not Yet Arrived':'Workers Away'):'Available';
+      return `<tr><td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.dept||'—')}</td><td>${rec.length}</td><td>${last?fmtDate(last.start):'—'}</td><td>${status}</td></tr>`;
+    }).join('');
+    title.textContent='Reports'; sub.textContent='தொழிலாளர் & விடுப்பு அறிக்கை';
+    body.innerHTML=`<div class="utility-grid"><div class="utility-card"><h4>Total Workers</h4><div class="big">${totalWorkers}</div></div><div class="utility-card"><h4>Leave Records</h4><div class="big">${totalEntries}</div></div><div class="utility-card"><h4>Total Leave Days</h4><div class="big">${totalDays}</div></div><div class="utility-card"><h4>Workers Away</h4><div class="big">${away}</div></div><div class="utility-card"><h4>Not Yet Arrived</h4><div class="big">${overdue}</div></div></div><div style="padding:0 20px 16px;overflow:auto"><table class="utility-table"><thead><tr><th>Worker</th><th>Department</th><th>Leaves</th><th>Last Leave</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan="5">No workers added yet.</td></tr>'}</tbody></table></div><div class="utility-actions"><button id="printReportBtn">🖨 Print Report</button></div>`;
+    document.getElementById('printReportBtn').onclick=()=>window.print();
+  } else if(type==='backup'){
+    title.textContent='Backup / Restore'; sub.textContent='தரவை பாதுகாப்பாக சேமித்து மீட்டெடுக்கவும்';
+    body.innerHTML=`<div class="utility-grid"><div class="utility-card"><h4>Workers</h4><div class="big">${workers.length}</div></div><div class="utility-card"><h4>Leave Records</h4><div class="big">${entries.length}</div></div><div class="utility-card"><h4>Data</h4><div class="big">Local</div></div></div><div class="utility-actions"><button id="utilityBackupBtn">⬇ Backup Data</button><label>⬆ Restore Backup<input id="utilityRestoreInput" type="file" accept="application/json" style="display:none"></label></div><div style="padding:0 20px 20px;color:var(--ink-soft);font-size:13px">Backup is saved as a JSON file. Restore will replace the current worker and leave data after confirmation.</div>`;
+    document.getElementById('utilityBackupBtn').onclick=exportBackup;
+    document.getElementById('utilityRestoreInput').addEventListener('change', handleRestoreFile);
+  } else if(type==='settings'){
+    title.textContent='Settings'; sub.textContent='அமைப்புகள்';
+    body.innerHTML=`<div class="settings-list"><div class="setting-row"><div><label>Language</label><small>Choose the display language.</small></div><select id="settingLanguage"><option value="en-ta">English + தமிழ்</option><option value="en">English</option></select></div><div class="setting-row"><div><label>Auto status update</label><small>Arrival date கடந்தால் Not Yet Arrived-க்கு மாற்றும்.</small></div><strong style="color:var(--ok)">ON</strong></div><div class="setting-row"><div><label>Local data storage</label><small>Data stays on this device/browser.</small></div><strong>ON</strong></div></div>`;
+    const sel=document.getElementById('settingLanguage');
+    sel.value=localStorage.getItem('leaveRegisterLanguage')||'en-ta';
+    sel.onchange=()=>{localStorage.setItem('leaveRegisterLanguage',sel.value);setStatus('Language preference saved.');};
+  }
+  modal.classList.remove('hidden');
+}
+function handleRestoreFile(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{try{const data=JSON.parse(ev.target.result);if(!confirm('இப்போ இருக்குற data-ஐ இந்த backup file data replace பண்ணும். தொடரவா?')){e.target.value='';return;}workers=Array.isArray(data.workers)?data.workers:[];entries=Array.isArray(data.entries)?data.entries:[];await persistWorkers();await persistEntries();render();setStatus('Backup restored successfully.');openUtility('backup');}catch(err){setStatus('Invalid backup file.');}e.target.value='';};
+  reader.readAsText(file);
+}
+document.querySelectorAll('.side-item[data-nav]').forEach(btn=>btn.addEventListener('click',()=>{
+  const nav=btn.dataset.nav; setActiveNav(nav);
+  if(nav==='dashboard') window.scrollTo({top:0,behavior:'smooth'});
+  else if(nav==='add-worker'){document.getElementById('masterFormTitle').scrollIntoView({behavior:'smooth',block:'start'});}
+  else if(nav==='leave-entry'){document.getElementById('formTitle').scrollIntoView({behavior:'smooth',block:'start'});}
+  else if(nav==='reports') openUtility('reports');
+  else if(nav==='backup') openUtility('backup');
+  else if(nav==='settings') openUtility('settings');
+}));
+document.getElementById('closeUtility').addEventListener('click',()=>document.getElementById('utilityModal').classList.add('hidden'));
+document.getElementById('utilityModal').addEventListener('click',e=>{if(e.target.id==='utilityModal')document.getElementById('utilityModal').classList.add('hidden')});
+document.querySelector('.settings-btn').addEventListener('click',()=>openUtility('settings'));
+
 function exportBackup(){
   const data = {
     workers: workers,
@@ -1246,30 +1325,7 @@ function exportBackup(){
 
 document.getElementById('backupBtn').addEventListener('click', exportBackup);
 
-document.getElementById('restoreInput').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async (ev) => {
-    try{
-      const data = JSON.parse(ev.target.result);
-      if(!confirm('இப்போ இருக்குற data-ஐ இந்த backup file data replace பண்ணும். தொடரவா?')){
-        e.target.value = '';
-        return;
-      }
-      workers = Array.isArray(data.workers) ? data.workers : [];
-      entries = Array.isArray(data.entries) ? data.entries : [];
-      await persistWorkers();
-      await persistEntries();
-      render();
-      setStatus('Backup restored successfully.');
-    }catch(err){
-      setStatus('Invalid backup file.');
-    }
-    e.target.value = '';
-  };
-  reader.readAsText(file);
-});
+document.getElementById('restoreInput').addEventListener('change', handleRestoreFile);
 
 loadAll();
 
