@@ -258,6 +258,13 @@
   .worker-chip .wc-name{ font-weight:600; color: var(--navy); flex:1; }
   .worker-chip .wc-arrow{ color:#B7BFC9; font-size:16px; }
   .worker-search-row{ margin: 8px 0 4px; }
+  .photo-field{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .photo-preview{width:76px; height:76px; border-radius:14px; border:1px dashed var(--paper-line); background:#F7F5EF; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#9AA3AE; font-size:12px; text-align:center;}
+  .photo-preview img{width:100%; height:100%; object-fit:cover;}
+  .photo-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .worker-photo-thumb{width:34px; height:34px; border-radius:9px; object-fit:cover; border:1px solid var(--paper-line); vertical-align:middle;}
+  .profile-photo{width:92px; height:92px; border-radius:18px; object-fit:cover; border:2px solid var(--gold-line); box-shadow:0 4px 10px rgba(0,0,0,.12);}
+  .profile-photo-wrap{display:flex; justify-content:center; padding:10px 20px 0;}
   .status-msg{
     text-align:center; padding:10px; font-size:12px; color: var(--ink-soft);
   }
@@ -485,7 +492,21 @@ body.lang-en .modal-tamil { display:none !important; }
       </div>
       <div class="field">
         <label>Reference Person <span class="tam">யார் சேர்த்தார்</span></label>
-        <input id="w_reference" placeholder="Who referred/brought them" />
+        <select id="w_reference_select">
+          <option value="">Select existing worker</option>
+          <option value="__other__">Other person</option>
+        </select>
+        <input id="w_reference_other" placeholder="Enter other person's name" style="display:none; margin-top:8px;" />
+      </div>
+      <div class="field full">
+        <label>Worker Photo <span class="tam">தொழிலாளர் புகைப்படம்</span></label>
+        <div class="photo-field">
+          <div class="photo-preview" id="workerPhotoPreview">No photo</div>
+          <div class="photo-actions">
+            <input id="w_photo" type="file" accept="image/*" />
+            <button type="button" class="btn-ghost" id="removeWorkerPhoto" style="display:none;">Remove Photo</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="form-actions">
@@ -597,6 +618,7 @@ body.lang-en .modal-tamil { display:none !important; }
       </div>
       <button class="modal-close" id="closeHistory">✕</button>
     </div>
+    <div class="profile-photo-wrap" id="historyProfilePhoto" style="display:none;"></div>
     <div id="historyProfileActions" style="display:none; gap:8px; padding: 10px 20px 0;">
       <button class="btn-ghost" style="font-size:12px; padding:6px 12px;" data-action="edit-profile-worker">✎ Edit Worker</button>
       <button class="btn-danger" style="font-size:12px; padding:6px 12px;" data-action="delete-profile-worker">✕ Delete Worker</button>
@@ -749,19 +771,68 @@ async function persistWorkers(){
   }
 }
 
+function renderReferenceOptions(selectedId='', selectedName=''){
+  const sel = document.getElementById('w_reference_select');
+  if(!sel) return;
+  const currentEdit = editingWorkerId;
+  const options = ['<option value="">Select existing worker</option>'];
+  workers
+    .filter(w => w.id !== currentEdit)
+    .slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(w => options.push(`<option value="${escapeHtml(w.id)}">${escapeHtml(w.name)}${w.dept ? ' — ' + escapeHtml(w.dept) : ''}</option>`));
+  options.push('<option value="__other__">Other person</option>');
+  sel.innerHTML = options.join('');
+  const match = selectedId || (selectedName ? workers.find(w => w.id !== currentEdit && w.name.toLowerCase() === selectedName.toLowerCase())?.id || '' : '');
+  if(match){
+    sel.value = match;
+    document.getElementById('w_reference_other').style.display='none';
+  }else if(selectedName){
+    sel.value='__other__';
+    document.getElementById('w_reference_other').value=selectedName;
+    document.getElementById('w_reference_other').style.display='block';
+  }else{
+    sel.value='';
+    document.getElementById('w_reference_other').value='';
+    document.getElementById('w_reference_other').style.display='none';
+  }
+}
+
+function setWorkerPhotoPreview(photo){
+  const box=document.getElementById('workerPhotoPreview');
+  const remove=document.getElementById('removeWorkerPhoto');
+  if(photo){ box.innerHTML=`<img src="${photo}" alt="Worker photo">`; remove.style.display='inline-block'; }
+  else { box.textContent='No photo'; remove.style.display='none'; }
+}
+
 function clearWorkerForm(){
-  ['w_name','w_dept','w_joined','w_phone','w_altphone','w_reference'].forEach(id => document.getElementById(id).value = '');
+  ['w_name','w_dept','w_joined','w_phone','w_altphone','w_reference_other'].forEach(id => document.getElementById(id).value = '');
+  const file=document.getElementById('w_photo'); if(file) file.value='';
   editingWorkerId = null;
+  renderReferenceOptions();
+  setWorkerPhotoPreview('');
   document.getElementById('masterFormTitle').innerHTML = (localStorage.getItem('leaveRegisterLanguage')==='en') ? '+ Add Worker' : '+ Add Worker <span class="tam">தொழிலாளி விவரம்</span>';
   document.getElementById('cancelWorkerEdit').style.display = 'none';
   document.getElementById('saveWorkerBtn').textContent = 'Save Worker';
 }
+
 
 document.getElementById('cancelWorkerEdit').addEventListener('click', clearWorkerForm);
 
 document.getElementById('saveWorkerBtn').addEventListener('click', async () => {
   const name = document.getElementById('w_name').value.trim();
   if(!name){ setStatus('Worker name is required.'); return; }
+
+  const refSelect = document.getElementById('w_reference_select').value;
+  const selectedRefWorker = refSelect && refSelect !== '__other__' ? workers.find(w => w.id === refSelect) : null;
+  const reference = selectedRefWorker ? selectedRefWorker.name : document.getElementById('w_reference_other').value.trim();
+  const referenceId = selectedRefWorker ? selectedRefWorker.id : '';
+  const existing = editingWorkerId ? workers.find(w => w.id === editingWorkerId) : null;
+  let photo = existing?.photo || '';
+  const photoFile = document.getElementById('w_photo').files?.[0];
+  if(photoFile){
+    try{ photo = await compressWorkerPhoto(photoFile); }
+    catch(e){ setStatus('Could not read worker photo.'); return; }
+  }
 
   const worker = {
     id: editingWorkerId || (Date.now() + '-' + Math.random().toString(36).slice(2,7)),
@@ -770,7 +841,9 @@ document.getElementById('saveWorkerBtn').addEventListener('click', async () => {
     joined: document.getElementById('w_joined').value,
     phone: document.getElementById('w_phone').value.trim(),
     altPhone: document.getElementById('w_altphone').value.trim(),
-    reference: document.getElementById('w_reference').value.trim()
+    reference,
+    referenceId,
+    photo
   };
 
   if(editingWorkerId){
@@ -785,6 +858,50 @@ document.getElementById('saveWorkerBtn').addEventListener('click', async () => {
   renderSummary();
 });
 
+function compressWorkerPhoto(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=reject;
+      img.onload=()=>{
+        const max=480;
+        const scale=Math.min(1,max/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.width*scale));
+        canvas.height=Math.max(1,Math.round(img.height*scale));
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',0.78));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('w_reference_select').addEventListener('change', (e)=>{
+  const other=document.getElementById('w_reference_other');
+  if(e.target.value==='__other__'){ other.style.display='block'; other.focus(); }
+  else { other.style.display='none'; other.value=''; }
+});
+
+document.getElementById('w_photo').addEventListener('change', async (e)=>{
+  const file=e.target.files?.[0];
+  if(!file){ setWorkerPhotoPreview(''); return; }
+  try{ setWorkerPhotoPreview(await compressWorkerPhoto(file)); }catch(err){ setStatus('Could not preview worker photo.'); }
+});
+
+document.getElementById('removeWorkerPhoto').addEventListener('click', ()=>{
+  document.getElementById('w_photo').value='';
+  setWorkerPhotoPreview('');
+  if(editingWorkerId){
+    const w=workers.find(x=>x.id===editingWorkerId);
+    if(w) w.photo='';
+  }
+});
+
 function editWorker(id){
   const w = workers.find(x => x.id === id);
   if(!w) return;
@@ -794,8 +911,10 @@ function editWorker(id){
   document.getElementById('w_joined').value = w.joined;
   document.getElementById('w_phone').value = w.phone;
   document.getElementById('w_altphone').value = w.altPhone || '';
-  document.getElementById('w_reference').value = w.reference || '';
   editingWorkerId = id;
+  renderReferenceOptions(w.referenceId || '', w.reference || '');
+  document.getElementById('w_photo').value='';
+  setWorkerPhotoPreview(w.photo || '');
   document.getElementById('masterFormTitle').innerHTML = (localStorage.getItem('leaveRegisterLanguage')==='en') ? '✎ Edit Worker' : '✎ Edit Worker <span class="tam">திருத்து</span>';
   document.getElementById('cancelWorkerEdit').style.display = 'inline-block';
   document.getElementById('saveWorkerBtn').textContent = 'Update Worker';
@@ -827,6 +946,7 @@ function renderWorkers(){
 
   const rows = sorted.map(w => `
     <tr>
+      <td>${w.photo ? `<img class="worker-photo-thumb" src="${w.photo}" alt="">` : '—'}</td>
       <td class="name-cell" data-action="open-history" data-name="${escapeHtml(w.name)}">${escapeHtml(w.name)}</td>
       <td>${w.dept ? `<span class="dept-tag">${escapeHtml(w.dept)}</span>` : '—'}</td>
       <td>${w.joined ? fmtDate(w.joined) : '—'}</td>
@@ -845,7 +965,7 @@ function renderWorkers(){
   wrap.innerHTML = `
     <div style="overflow-x:auto;">
     <table style="min-width:600px; width:100%;">
-      <thead><tr><th>Name</th><th>Department</th><th>Joined</th><th>Phone</th><th>Alt. Phone</th><th>Reference</th><th></th></tr></thead>
+      <thead><tr><th>Photo</th><th>Name</th><th>Department</th><th>Joined</th><th>Phone</th><th>Alt. Phone</th><th>Reference</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     </div>
@@ -1141,6 +1261,8 @@ function openHistory(name){
   const master = workers.find(w => w.name.toLowerCase() === name.toLowerCase());
   currentProfileWorkerId = master ? master.id : null;
   document.getElementById('historyProfileActions').style.display = master ? 'flex' : 'none';
+  const photoEl=document.getElementById('historyProfilePhoto');
+  if(master?.photo){ photoEl.style.display='flex'; photoEl.innerHTML=`<img class="profile-photo" src="${master.photo}" alt="${escapeHtml(master.name)}">`; } else { photoEl.style.display='none'; photoEl.innerHTML=''; }
   const subParts = [];
   if(master?.dept || depts.length) subParts.push(master?.dept || depts.join(', '));
   if(master?.joined) subParts.push('Joined ' + fmtDate(master.joined));
