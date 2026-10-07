@@ -65,6 +65,16 @@
     margin: 0 0 14px 14px;
     line-height:1.25;
   }
+
+  .cover-main{display:flex; flex-direction:column; justify-content:center; min-width:0;}
+  .brand-mark{width:62px; height:62px; flex:0 0 62px; border-radius:18px; background:linear-gradient(145deg,#F5D56A,#B4922E); color:var(--navy-deep); display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 5px 12px rgba(0,0,0,.18); font-size:30px; margin-left:14px;}
+  .brand-mark b{position:absolute; right:-4px; bottom:-4px; width:22px; height:22px; border-radius:50%; background:#fff; color:var(--ok); display:flex; align-items:center; justify-content:center; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,.18);}
+  .cover{display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:center;}
+  .cover-main .cover-eyebrow,.cover-main .cover-title{margin-left:0;}
+  .cover-title span{font-family:'Inter',sans-serif; font-size:.58em; font-weight:500; color:#E8E1D2;}
+  .backup-row{grid-column:1 / -1; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-left:76px;}
+  .backup-row .cover-note{flex:1; min-width:220px;}
+  @media (max-width:560px){ .cover{grid-template-columns:auto 1fr; padding:16px 18px;} .brand-mark{width:52px;height:52px;flex-basis:52px;font-size:24px;} .backup-row{padding-left:0;} .cover-title{font-size:22px;} }
   .company-row{
     display:flex; align-items:center; gap:10px;
     margin-left:14px;
@@ -339,18 +349,15 @@
 <div class="wrap">
 
   <div class="cover">
-    <p class="cover-eyebrow">EMPLOYEE RECORD BOOK</p>
-    <h2 class="cover-title">Leave Register · விடுப்பு பதிவேடு</h2>
-    <div class="company-row">
-      <label>Company Name</label>
-      <input id="companyName" placeholder="Type your company name" />
+    <div class="brand-mark" aria-hidden="true"><span>👥</span><b>✓</b></div>
+    <div class="cover-main">
+      <p class="cover-eyebrow">EMPLOYEE RECORD BOOK</p>
+      <h2 class="cover-title">Leave Register <span>· விடுப்பு பதிவேடு</span></h2>
     </div>
-    <p style="margin: 10px 0 0 14px; font-size:11px; color:#9AA9BC;">Data is saved on this device/browser only.</p>
-    <div style="display:flex; gap:10px; margin: 14px 0 0 14px; flex-wrap:wrap;">
-      <button id="backupBtn" style="background:transparent; color:#EFEAE0; border:1px solid rgba(255,255,255,0.35); font-size:12px; padding:8px 14px;">⬇ Backup Data</button>
-      <label style="background:transparent; color:#EFEAE0; border:1px solid rgba(255,255,255,0.35); font-size:12px; padding:8px 14px; border-radius:3px; cursor:pointer; font-family:'Inter',sans-serif; font-weight:600;">⬆ Restore Backup
-        <input type="file" id="restoreInput" accept="application/json" style="display:none;">
-      </label>
+    <div class="backup-row">
+      <span class="cover-note">Data is saved on this device/browser only.</span>
+      <button class="btn-ghost cover-btn" id="backupBtn">↓ Backup Data</button>
+      <label class="btn-ghost cover-btn" style="display:inline-flex; align-items:center; gap:6px;">↑ Restore Backup<input id="restoreInput" type="file" accept="application/json" style="display:none;"></label>
     </div>
   </div>
 
@@ -537,6 +544,19 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="workersAwayModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h3>Workers Away</h3>
+        <div class="sub">ஊருக்கு சென்றவர்கள்</div>
+      </div>
+      <button class="modal-close" id="closeWorkersAway">✕</button>
+    </div>
+    <div id="workersAwayList" style="padding: 10px 20px 16px;"></div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="workerPickerModal">
   <div class="modal-card">
     <div class="modal-head">
@@ -603,8 +623,6 @@ document.getElementById('f_pld').addEventListener('input', recalcAll);
 
 async function loadAll(){
   try{
-    const companyVal = localStorage.getItem(COMPANY_KEY);
-    if(companyVal) document.getElementById('companyName').value = companyVal;
   }catch(e){ /* not set yet */ }
 
   try{
@@ -623,15 +641,6 @@ async function loadAll(){
 
   render();
 }
-
-let companySaveTimer = null;
-document.getElementById('companyName').addEventListener('input', (e) => {
-  clearTimeout(companySaveTimer);
-  companySaveTimer = setTimeout(() => {
-    try{ localStorage.setItem(COMPANY_KEY, e.target.value); }
-    catch(err){ setStatus('Could not save company name.'); }
-  }, 500);
-});
 
 async function persistEntries(){
   try{
@@ -920,29 +929,46 @@ function todayStr(){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-function isOnLeaveToday(e){
+function isActiveLeave(e){
   if(!e.start) return false;
   const today = todayStr();
   if(e.start > today) return false;
-  if(e.rejoin && e.rejoin < today) return false;
+  if(e.rejoin && e.rejoin <= today) return false;
   return true;
 }
 
 function daysOverdue(expected){
+  if(!expected) return 0;
   const today = todayStr();
-  return daysBetweenInclusive(expected, today) - 1;
+  return Math.max(0, daysBetweenInclusive(expected, today) - 1);
+}
+
+// Only the latest active leave record for each worker controls the dashboard status.
+function getCurrentLeaveEntries(){
+  const byWorker = new Map();
+  entries.filter(isActiveLeave).forEach(e => {
+    const key = (e.name || '').trim().toLowerCase();
+    const existing = byWorker.get(key);
+    if(!existing || (e.start || '') > (existing.start || '')) byWorker.set(key, e);
+  });
+  return [...byWorker.values()];
 }
 
 function getOverdueEntries(){
   const today = todayStr();
-  return entries.filter(e => e.expected && !e.rejoin && e.expected < today);
+  return getCurrentLeaveEntries().filter(e => e.expected && e.expected < today);
+}
+
+function getWorkersAwayEntries(){
+  const today = todayStr();
+  return getCurrentLeaveEntries().filter(e => !e.expected || e.expected >= today);
 }
 
 function openNotArrived(){
   const overdue = getOverdueEntries().sort((a,b) => a.expected.localeCompare(b.expected));
   const listEl = document.getElementById('notArrivedList');
   if(overdue.length === 0){
-    listEl.innerHTML = `<div class="empty">எல்லாரும் திரும்பி வந்துட்டாங்க 🎉<div style="font-size:12px; margin-top:4px;">No one overdue right now.</div></div>`;
+    listEl.innerHTML = `<div class="empty">எல்லாரும் return ஆகிட்டாங்க 🎉<div style="font-size:12px; margin-top:4px;">No one is overdue right now.</div></div>`;
   } else {
     listEl.innerHTML = overdue.map(e => `
       <div class="overdue-row" data-action="open-history" data-name="${escapeHtml(e.name)}">
@@ -954,6 +980,22 @@ function openNotArrived(){
   document.getElementById('notArrivedModal').classList.remove('hidden');
 }
 
+function openWorkersAway(){
+  const away = getWorkersAwayEntries().sort((a,b) => (a.expected || '9999-12-31').localeCompare(b.expected || '9999-12-31'));
+  const listEl = document.getElementById('workersAwayList');
+  if(away.length === 0){
+    listEl.innerHTML = `<div class="empty">இப்போது யாரும் ஊரில் இல்லை 🎉<div style="font-size:12px; margin-top:4px;">No workers are currently away.</div></div>`;
+  } else {
+    listEl.innerHTML = away.map(e => `
+      <div class="overdue-row" data-action="open-history" data-name="${escapeHtml(e.name)}">
+        <span class="ob-name">${escapeHtml(e.name)} ${e.dept ? `<span class="dept-tag">${escapeHtml(e.dept)}</span>` : ''}</span>
+        <span class="ob-meta">From ${fmtDate(e.start)} · ${e.expected ? 'Return ' + fmtDate(e.expected) : 'Return date not set'}</span>
+      </div>
+    `).join('');
+  }
+  document.getElementById('workersAwayModal').classList.remove('hidden');
+}
+
 function renderSummary(){
   const totalWorkers = workers.length;
   const totalDays = entries.reduce((sum, e) => {
@@ -962,16 +1004,15 @@ function renderSummary(){
   }, 0);
   const totalExtra = entries.reduce((sum, e) => sum + (parseInt(e.extra) || 0), 0);
 
-  const onLeaveTodayNames = new Set(entries.filter(isOnLeaveToday).map(e => e.name.toLowerCase()));
-  const onLeaveToday = onLeaveTodayNames.size;
-  const presentToday = Math.max(0, totalWorkers - onLeaveToday);
   const overdueCount = getOverdueEntries().length;
+  const awayCount = getWorkersAwayEntries().length;
 
   document.getElementById('summary').innerHTML = `
     <div class="stat"><div class="n">${totalWorkers}</div><div class="l">Total workers</div></div>
     <div class="stat" style="cursor:pointer;" data-action="open-workers-detail"><div class="n">📁</div><div class="l">Workers Details</div></div>
     <div class="stat" style="cursor:pointer;" data-action="open-history-picker"><div class="n">🕘</div><div class="l">Worker Leave History</div></div>
     <div class="stat" style="cursor:pointer;" data-action="open-not-arrived"><div class="n" style="color:${overdueCount > 0 ? 'var(--stamp)' : 'var(--ink)'};">${overdueCount > 0 ? '⚠ ' + overdueCount : '📁'}</div><div class="l">Not Yet Arrived</div></div>
+    <div class="stat" style="cursor:pointer; border-color:${awayCount > 0 ? 'var(--ok)' : 'var(--paper-line)'};" data-action="open-workers-away"><div class="n" style="color:${awayCount > 0 ? 'var(--ok)' : 'var(--ink)'};">${awayCount > 0 ? '🏠 ' + awayCount : '🏠'}</div><div class="l">Workers Away</div></div>
   `;
 }
 
@@ -998,6 +1039,7 @@ function openHistory(name){
   document.getElementById('workersDetailModal').classList.add('hidden');
   document.getElementById('workerPickerModal').classList.add('hidden');
   document.getElementById('notArrivedModal').classList.add('hidden');
+  document.getElementById('workersAwayModal').classList.add('hidden');
 
   const records = entries
     .filter(e => e.name.toLowerCase() === name.toLowerCase())
@@ -1110,6 +1152,7 @@ document.addEventListener('click', (e) => {
   else if(action === 'open-workers-detail') openWorkersDetail();
   else if(action === 'open-history-picker') openHistoryPicker();
   else if(action === 'open-not-arrived') openNotArrived();
+  else if(action === 'open-workers-away') openWorkersAway();
 });
 
 document.getElementById('closeWorkersDetail').addEventListener('click', () => {
@@ -1121,9 +1164,16 @@ document.getElementById('workersDetailModal').addEventListener('click', (e) => {
 
 document.getElementById('closeNotArrived').addEventListener('click', () => {
   document.getElementById('notArrivedModal').classList.add('hidden');
+  document.getElementById('workersAwayModal').classList.add('hidden');
 });
 document.getElementById('notArrivedModal').addEventListener('click', (e) => {
   if(e.target.id === 'notArrivedModal') document.getElementById('notArrivedModal').classList.add('hidden');
+});
+document.getElementById('closeWorkersAway').addEventListener('click', () => {
+  document.getElementById('workersAwayModal').classList.add('hidden');
+});
+document.getElementById('workersAwayModal').addEventListener('click', (e) => {
+  if(e.target.id === 'workersAwayModal') document.getElementById('workersAwayModal').classList.add('hidden');
 });
 
 function exportBackup(){
@@ -1165,10 +1215,7 @@ document.getElementById('restoreInput').addEventListener('change', (e) => {
       entries = Array.isArray(data.entries) ? data.entries : [];
       await persistWorkers();
       await persistEntries();
-      if(typeof data.companyName === 'string'){
-        localStorage.setItem(COMPANY_KEY, data.companyName);
-        document.getElementById('companyName').value = data.companyName;
-      }
+      if(typeof data.companyName === 'string') localStorage.setItem(COMPANY_KEY, data.companyName);
       render();
       setStatus('Backup restored successfully.');
     }catch(err){
