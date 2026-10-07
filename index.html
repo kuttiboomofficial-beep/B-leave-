@@ -399,7 +399,11 @@ button{border-radius:8px;}
 
 @media(max-width:1050px){.summary{grid-template-columns:repeat(3,1fr)}.app-sidebar{width:76px}.app-shell{margin-left:76px}.side-item{justify-content:center;padding:12px}.side-item span{display:none}.side-logo img{width:54px;height:54px}.topbar-brand h1{font-size:24px}.topbar-brand div div{font-size:14px}}
 @media(max-width:720px){.app-sidebar{display:none}.app-shell{margin-left:0}.topbar{height:auto;min-height:78px;padding:12px 14px}.topbar-brand img{width:46px;height:46px}.topbar-brand h1{font-size:21px}.topbar-brand div div{font-size:13px}.topbar-actions{gap:6px}.top-btn{height:40px;padding:0 10px;font-size:12px}.settings-btn{height:40px;width:40px}.main-content{padding:14px}.summary{grid-template-columns:1fr 1fr;gap:10px}.stat{height:125px;padding:14px}.stat .n{font-size:24px}.stat .l{font-size:12px}.stat:after{right:9px;width:28px;height:28px;font-size:20px}.card{padding:18px 14px 4px}.card h2{font-size:20px}.grid{grid-template-columns:1fr}.cover{display:none!important}}
-</style>
+<style>
+.print-section-title{padding:4px 20px 8px;font-size:14px;font-weight:700;color:#475467}
+.print-options{display:flex;flex-wrap:wrap;gap:10px}
+.print-options button{min-width:145px}
+</style></style>
 </head>
 <body>
 <aside class="app-sidebar">
@@ -1281,8 +1285,73 @@ function openUtility(type){
       return `<tr><td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.dept||'—')}</td><td>${rec.length}</td><td>${last?fmtDate(last.start):'—'}</td><td>${status}</td></tr>`;
     }).join('');
     title.textContent='Reports'; sub.textContent='தொழிலாளர் & விடுப்பு அறிக்கை';
-    body.innerHTML=`<div class="utility-grid"><div class="utility-card"><h4>Total Workers</h4><div class="big">${totalWorkers}</div></div><div class="utility-card"><h4>Leave Records</h4><div class="big">${totalEntries}</div></div><div class="utility-card"><h4>Total Leave Days</h4><div class="big">${totalDays}</div></div><div class="utility-card"><h4>Workers Away</h4><div class="big">${away}</div></div><div class="utility-card"><h4>Not Yet Arrived</h4><div class="big">${overdue}</div></div></div><div style="padding:0 20px 16px;overflow:auto"><table class="utility-table"><thead><tr><th>Worker</th><th>Department</th><th>Leaves</th><th>Last Leave</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan="5">No workers added yet.</td></tr>'}</tbody></table></div><div class="utility-actions"><button id="printReportBtn">🖨 Print Report</button></div>`;
-    document.getElementById('printReportBtn').onclick=()=>window.print();
+    body.innerHTML=`<div class="utility-grid"><div class="utility-card"><h4>Total Workers</h4><div class="big">${totalWorkers}</div></div><div class="utility-card"><h4>Leave Records</h4><div class="big">${totalEntries}</div></div><div class="utility-card"><h4>Total Leave Days</h4><div class="big">${totalDays}</div></div><div class="utility-card"><h4>Workers Away</h4><div class="big">${away}</div></div><div class="utility-card"><h4>Not Yet Arrived</h4><div class="big">${overdue}</div></div></div><div style="padding:0 20px 16px;overflow:auto"><table class="utility-table"><thead><tr><th>Worker</th><th>Department</th><th>Leaves</th><th>Last Leave</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan="5">No workers added yet.</td></tr>'}</tbody></table></div><div class="print-section-title">Print separately</div>
+      <div class="utility-actions print-options">
+        <button id="printFullReportBtn">🖨 Full Report</button>
+        <button id="printWorkersBtn">👥 Total Workers</button>
+        <button id="printLeaveHistoryBtn">📋 Leave History</button>
+        <button id="printAwayBtn">🏠 Workers Away</button>
+        <button id="printNotArrivedBtn">⚠ Not Yet Arrived</button>
+      </div>
+      <div class="print-section-title">Print Department-wise</div>
+      <div id="departmentPrintOptions" class="utility-actions print-options"></div>`;
+    const printRows=(items,headers,rowFn,titleText,subText)=>{
+      const rowsHtml=items.length?items.map(rowFn).join(''):`<tr><td colspan="${headers.length}" style="text-align:center;padding:24px">No records found.</td></tr>`;
+      const th=headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('');
+      const win=window.open('','_blank','width=1000,height=800');
+      if(!win){setStatus('Please allow pop-ups to print.');return;}
+      win.document.write(`<!doctype html><html><head><title>${escapeHtml(titleText)}</title><meta charset="utf-8"><style>
+        *{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;padding:28px;color:#14213d}
+        h1{margin:0 0 4px;font-size:24px}h2{margin:0 0 22px;font-size:14px;color:#667085;font-weight:500}
+        .meta{display:flex;gap:28px;margin:0 0 18px}.meta b{font-size:20px;display:block}.meta span{font-size:12px;color:#667085}
+        table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d9dee8;padding:9px 10px;text-align:left;font-size:12px}th{background:#eef3fb;font-weight:700}
+        .footer{margin-top:18px;font-size:10px;color:#7b8494} @media print{body{padding:12mm}button{display:none}}
+      </style></head><body><h1>${escapeHtml(titleText)}</h1><h2>${escapeHtml(subText)}</h2><table><thead><tr>${th}</tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer">Printed from Leave Register</div></body></html>`);
+      win.document.close(); win.focus(); setTimeout(()=>win.print(),250);
+    };
+    const workerList=workers.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    const workerRows=workerList;
+    const leaveRows=entries.slice().sort((a,b)=>(b.start||'').localeCompare(a.start||''));
+    const awayRows=getCurrentLeaveEntries().filter(e=>!getOverdueEntries().some(x=>x.id===e.id));
+    const notArrivedRows=getOverdueEntries();
+    const workerRow=w=>`<tr><td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.dept||'—')}</td><td>${escapeHtml(w.phone||'—')}</td><td>${escapeHtml(w.joined||'—')}</td></tr>`;
+    const leaveRow=e=>`<tr><td>${escapeHtml(e.name||'—')}</td><td>${escapeHtml(e.dept||'—')}</td><td>${fmtDate(e.start)}</td><td>${fmtDate(e.rejoin)}</td><td>${escapeHtml(e.reason||'—')}</td></tr>`;
+    const statusRow=e=>`<tr><td>${escapeHtml(e.name||'—')}</td><td>${escapeHtml(e.dept||'—')}</td><td>${fmtDate(e.start)}</td><td>${fmtDate(e.rejoin)}</td><td>${escapeHtml(e.reason||'—')}</td></tr>`;
+    const fullRow=w=>{
+      const rec=entries.filter(e=>(e.name||'').toLowerCase()===(w.name||'').toLowerCase());
+      const last=rec.slice().sort((a,b)=>(b.start||'').localeCompare(a.start||''))[0];
+      const active=getCurrentLeaveEntries().find(e=>(e.name||'').toLowerCase()===(w.name||'').toLowerCase());
+      const status=active?(getOverdueEntries().some(e=>e.id===active.id)?'Not Yet Arrived':'Workers Away'):'Available';
+      return `<tr><td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.dept||'—')}</td><td>${rec.length}</td><td>${last?fmtDate(last.start):'—'}</td><td>${status}</td></tr>`;
+    };
+    document.getElementById('printFullReportBtn').onclick=()=>printRows(workerList,['Worker','Department','Leaves','Last Leave','Status'],fullRow,'Leave Register — Full Report','தொழிலாளர் & விடுப்பு முழு அறிக்கை');
+    document.getElementById('printWorkersBtn').onclick=()=>printRows(workerRows,['Worker','Department','Phone','Joined Date'],workerRow,'Leave Register — Total Workers','மொத்த தொழிலாளர்கள்');
+    document.getElementById('printLeaveHistoryBtn').onclick=()=>printRows(leaveRows,['Worker','Department','Leave Start','Rejoined','Reason'],leaveRow,'Leave Register — Leave History','விடுப்பு வரலாறு');
+    document.getElementById('printAwayBtn').onclick=()=>printRows(awayRows,['Worker','Department','Leave Start','Expected Return','Reason'],statusRow,'Leave Register — Workers Away','ஊருக்கு சென்ற தொழிலாளர்கள்');
+    document.getElementById('printNotArrivedBtn').onclick=()=>printRows(notArrivedRows,['Worker','Department','Leave Start','Expected Return','Reason'],statusRow,'Leave Register — Not Yet Arrived','இன்னும் வராத தொழிலாளர்கள்');
+
+    const departments=[...new Set(workers.map(w=>(w.dept||'Unassigned').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const deptBox=document.getElementById('departmentPrintOptions');
+    if(!departments.length){
+      deptBox.innerHTML='<span style="color:var(--ink-soft);font-size:13px">No departments available.</span>';
+    } else {
+      deptBox.innerHTML=departments.map((d,i)=>`<button id="printDept${i}">🏢 ${escapeHtml(d)} (${workers.filter(w=>(w.dept||'Unassigned').trim()===d).length})</button>`).join('');
+      departments.forEach((d,i)=>{
+        document.getElementById('printDept'+i).onclick=()=>{
+          const deptWorkers=workers.filter(w=>(w.dept||'Unassigned').trim()===d).sort((a,b)=>a.name.localeCompare(b.name));
+          const deptNames=new Set(deptWorkers.map(w=>(w.name||'').toLowerCase()));
+          const deptEntries=entries.filter(e=>deptNames.has((e.name||'').toLowerCase()) && ((e.dept||'Unassigned').trim()===d));
+          const deptRow=w=>{
+            const rec=deptEntries.filter(e=>(e.name||'').toLowerCase()===(w.name||'').toLowerCase());
+            const last=rec.slice().sort((a,b)=>(b.start||'').localeCompare(a.start||''))[0];
+            const active=getCurrentLeaveEntries().find(e=>(e.name||'').toLowerCase()===(w.name||'').toLowerCase() && ((e.dept||'Unassigned').trim()===d));
+            const status=active?(getOverdueEntries().some(e=>e.id===active.id)?'Not Yet Arrived':'Workers Away'):'Available';
+            return `<tr><td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.phone||'—')}</td><td>${rec.length}</td><td>${last?fmtDate(last.start):'—'}</td><td>${status}</td></tr>`;
+          };
+          printRows(deptWorkers,['Worker','Phone','Leaves','Last Leave','Status'],deptRow,`Leave Register — ${d}`,`Department-wise Report • ${d} • ${deptWorkers.length} workers`);
+        };
+      });
+    }
   } else if(type==='backup'){
     title.textContent='Backup / Restore'; sub.textContent='தரவை பாதுகாப்பாக சேமித்து மீட்டெடுக்கவும்';
     body.innerHTML=`<div class="utility-grid"><div class="utility-card"><h4>Workers</h4><div class="big">${workers.length}</div></div><div class="utility-card"><h4>Leave Records</h4><div class="big">${entries.length}</div></div><div class="utility-card"><h4>Data</h4><div class="big">Local</div></div></div><div class="utility-actions"><button id="utilityBackupBtn">⬇ Backup Data</button><label>⬆ Restore Backup<input id="utilityRestoreInput" type="file" accept="application/json" style="display:none"></label></div><div style="padding:0 20px 20px;color:var(--ink-soft);font-size:13px">Backup is saved as a JSON file. Restore will replace the current worker and leave data after confirmation.</div>`;
