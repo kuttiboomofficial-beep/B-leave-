@@ -6,8 +6,8 @@
 <title>Leave Register</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#25344A">
-<link rel="apple-touch-icon" href="icon-192.png?v=23">
-<link rel="icon" type="image/png" href="icon-192.png?v=23">
+<link rel="apple-touch-icon" href="icon-192.png?v=24">
+<link rel="icon" type="image/png" href="icon-192.png?v=24">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -412,10 +412,13 @@ body.lang-en .ta-help,
 body.lang-en .topbar-tamil,
 body.lang-en .modal-tamil { display:none !important; }
 
+<style id="language-fallback-style">
+body.lang-en .topbar-tamil, body.lang-en .tam, body.lang-en .ta-only, body.lang-en .ta-help, body.lang-en .modal-tamil { display:none !important; }
+</style>
 </head>
 <body>
 <aside class="app-sidebar">
-  <div class="side-logo"><img src="icon-192.png?v=23" alt="Leave Register"></div>
+  <div class="side-logo"><img src="icon-192.png?v=24" alt="Leave Register"></div>
   <nav class="side-nav">
     <button class="side-item active" data-nav="dashboard">⌂<span>Dashboard</span></button>
     <button class="side-item" data-action="open-workers-detail">👥<span>Workers</span></button>
@@ -433,7 +436,7 @@ body.lang-en .modal-tamil { display:none !important; }
 <div class="app-shell">
 <div class="topbar">
   <div class="topbar-brand">
-    <img src="icon-192.png?v=23" alt="Leave Register">
+    <img src="icon-192.png?v=24" alt="Leave Register">
     <div><h1>Leave Register</h1><div class="topbar-tamil">விடுப்பு பதிவு</div></div>
   </div>
   <div class="topbar-actions">
@@ -1276,11 +1279,29 @@ function setActiveNav(key){
 }
 function applyLanguage(lang){
   const mode = lang || localStorage.getItem('leaveRegisterLanguage') || 'en-ta';
+  localStorage.setItem('leaveRegisterLanguage', mode);
   document.body.classList.toggle('lang-en', mode === 'en');
+  document.documentElement.lang = mode === 'en' ? 'en' : 'en-IN';
+
+  // Apply the language immediately with inline display rules as well as the CSS class.
+  // This avoids stale CSS/service-worker cache leaving Tamil subtitles visible.
+  document.querySelectorAll('.tam, .ta-only, .ta-help, .topbar-tamil, .modal-tamil').forEach(el => {
+    el.style.display = mode === 'en' ? 'none' : '';
+  });
+
+  const topTamil = document.querySelector('.topbar-tamil');
+  if(topTamil) topTamil.textContent = 'விடுப்பு பதிவு';
+
   const master=document.getElementById('masterFormTitle');
-  if(master && !editingWorkerId) master.innerHTML = mode==='en' ? '+ Add Worker' : '+ Add Worker <span class="tam">தொழிலாளி விவரம்</span>';
+  if(master && !editingWorkerId) {
+    master.innerHTML = mode==='en' ? '+ Add Worker' : '+ Add Worker <span class="tam">தொழிலாளி விவரம்</span>';
+    const t=master.querySelector('.tam'); if(t) t.style.display=mode==='en'?'none':'';
+  }
   const leave=document.getElementById('formTitle');
-  if(leave && !editingId) leave.innerHTML = mode==='en' ? '+ New Leave Entry' : '+ New Leave Entry <span class="tam">புதிய பதிவு</span>';
+  if(leave && !editingId) {
+    leave.innerHTML = mode==='en' ? '+ New Leave Entry' : '+ New Leave Entry <span class="tam">புதிய பதிவு</span>';
+    const t=leave.querySelector('.tam'); if(t) t.style.display=mode==='en'?'none':'';
+  }
 }
 
 function openUtility(type){
