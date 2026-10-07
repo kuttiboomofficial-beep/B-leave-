@@ -6,8 +6,8 @@
 <title>Leave Register</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#25344A">
-<link rel="apple-touch-icon" href="icon-192.png?v=17">
-<link rel="icon" type="image/png" href="icon-192.png?v=17">
+<link rel="apple-touch-icon" href="icon-192.png?v=18">
+<link rel="icon" type="image/png" href="icon-192.png?v=18">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -327,24 +327,87 @@
     .register{ overflow-x:auto; }
     table{ min-width: 780px; }
   }
+
+/* v18 modern dashboard skin */
+:root{--modern-navy:#0d274d;--modern-blue:#1677e8;--modern-green:#18a957;--modern-red:#e63b3b;--modern-purple:#7650d8;--modern-gold:#f2b632;--modern-bg:#f3f6fb;}
+html,body{min-height:100%;}
+body{padding:0;background:var(--modern-bg);background-image:none;color:#17233d;font-family:Inter,system-ui,sans-serif;}
+.wrap{max-width:none;margin:0;padding:0;}
+.app-sidebar{position:fixed;left:0;top:0;bottom:0;width:185px;background:#0b2a52;color:#fff;z-index:40;padding:20px 0;box-shadow:4px 0 18px rgba(13,39,77,.12);}
+.side-logo{height:78px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.side-logo img{width:68px;height:68px;border-radius:18px;object-fit:cover;}
+.side-nav{display:flex;flex-direction:column;gap:5px;padding:0 5px;}
+.side-item{border:0;background:transparent;color:#dbe7f8;text-align:left;display:flex;align-items:center;gap:15px;padding:12px 16px;border-radius:8px;font:500 14px Inter;cursor:pointer;width:100%;}
+.side-item:first-letter{font-size:20px;}
+.side-item span{white-space:nowrap;}
+.side-item:hover,.side-item.active{background:#1677e8;color:#fff;}
+.app-shell{margin-left:185px;min-height:100vh;}
+.topbar{height:96px;background:#fff;border-bottom:1px solid #e6ebf2;display:flex;align-items:center;justify-content:space-between;padding:0 28px 0 32px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.topbar-brand{display:flex;align-items:center;gap:14px;}
+.topbar-brand img{width:58px;height:58px;border-radius:15px;object-fit:cover;}
+.topbar-brand h1{font-size:29px;line-height:1;margin:0;color:#10284e;font-weight:700;}
+.topbar-brand div div{font-size:17px;color:#53627b;margin-top:5px;}
+.topbar-actions{display:flex;gap:10px;align-items:center;}
+.top-btn{height:46px;border-radius:8px;padding:0 21px;display:inline-flex;align-items:center;justify-content:center;font:600 15px Inter;cursor:pointer;border:0;text-decoration:none;}
+.top-btn.backup{background:#0d477f;color:#fff;}
+.top-btn.restore{background:#16a85a;color:#fff;}
+.settings-btn{height:46px;width:46px;border:1px solid #dce3ed;background:#fff;border-radius:9px;font-size:20px;color:#66758d;cursor:pointer;}
+.main-content{padding:28px 22px 50px;max-width:1400px;margin:0 auto;}
+.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:0 0 24px;}
+.stat{min-width:0;height:150px;background:#fff;border:1px solid #e1e7ef;border-radius:13px;padding:20px 18px;box-shadow:0 3px 12px rgba(30,55,90,.06);display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
+.stat:after{content:'›';position:absolute;right:14px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:2px solid #e3e9f2;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6d7b91;font-size:25px;}
+.stat .n{font-family:Inter,sans-serif;font-weight:700;font-size:31px;color:#17233d;line-height:1.1;}
+.stat .l{font-size:15px;color:#17233d;font-weight:600;margin-top:8px;}
+.stat:nth-child(1){background:linear-gradient(145deg,#fff,#f5faff);}.stat:nth-child(1) .n{color:#10284e;}
+.stat:nth-child(2){background:linear-gradient(145deg,#fffdf7,#fff9e9);}.stat:nth-child(3){background:linear-gradient(145deg,#fff,#fbf8ff);}.stat:nth-child(4){background:linear-gradient(145deg,#fff,#fff4f4);}.stat:nth-child(5){background:linear-gradient(145deg,#fff,#f0fff6);}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:24px 24px 8px;margin-bottom:22px;box-shadow:0 4px 16px rgba(30,55,90,.05);}
+.card h2{font-family:Inter,sans-serif;font-size:25px;margin:0 0 22px;color:#122b52;font-weight:700;}
+.card h2 .tam{font-size:16px;color:#64738b;margin-left:6px;}
+.grid{gap:20px 24px;}
+.field{gap:7px;margin-bottom:14px;}
+.field label{font-size:15px;color:#2a3b59;font-weight:500;}
+.field label .tam{font-size:13px;color:#71809a;}
+.field input,.field textarea,.field select{border:1px solid #dbe2ec;border-radius:8px;padding:12px 14px;font-size:15px;background:#fff;min-height:48px;color:#26354e;}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1677e8;box-shadow:0 0 0 3px rgba(22,119,232,.10);}
+.form-actions{padding:6px 0 18px;justify-content:flex-start;}
+button{border-radius:8px;}
+.btn-primary{background:#1677e8;padding:12px 24px;font-size:15px;}
+.btn-ghost{border-color:#d6deea;background:#fff;padding:10px 18px;}
+@media(max-width:1050px){.summary{grid-template-columns:repeat(3,1fr)}.app-sidebar{width:76px}.app-shell{margin-left:76px}.side-item{justify-content:center;padding:12px}.side-item span{display:none}.side-logo img{width:54px;height:54px}.topbar-brand h1{font-size:24px}.topbar-brand div div{font-size:14px}}
+@media(max-width:720px){.app-sidebar{display:none}.app-shell{margin-left:0}.topbar{height:auto;min-height:78px;padding:12px 14px}.topbar-brand img{width:46px;height:46px}.topbar-brand h1{font-size:21px}.topbar-brand div div{font-size:13px}.topbar-actions{gap:6px}.top-btn{height:40px;padding:0 10px;font-size:12px}.settings-btn{height:40px;width:40px}.main-content{padding:14px}.summary{grid-template-columns:1fr 1fr;gap:10px}.stat{height:125px;padding:14px}.stat .n{font-size:24px}.stat .l{font-size:12px}.stat:after{right:9px;width:28px;height:28px;font-size:20px}.card{padding:18px 14px 4px}.card h2{font-size:20px}.grid{grid-template-columns:1fr}.cover{display:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<aside class="app-sidebar">
+  <div class="side-logo"><img src="icon-192.png?v=18" alt="Leave Register"></div>
+  <nav class="side-nav">
+    <button class="side-item active" data-nav="dashboard">⌂<span>Dashboard</span></button>
+    <button class="side-item" data-action="open-workers-detail">👥<span>Workers</span></button>
+    <button class="side-item" data-nav="add-worker">👤<span>Add Worker</span></button>
+    <button class="side-item" data-nav="leave-entry">▣<span>Leave Entry</span></button>
+    <button class="side-item" data-action="open-history-picker">◷<span>Leave History</span></button>
+    <button class="side-item" data-action="open-workers-away">⌂<span>Workers Away</span></button>
+    <button class="side-item" data-action="open-not-arrived">⚠<span>Not Yet Arrived</span></button>
+    <button class="side-item" data-nav="reports">▥<span>Reports</span></button>
+    <button class="side-item" data-nav="backup">▤<span>Backup / Restore</span></button>
+    <button class="side-item" data-nav="settings">⚙<span>Settings</span></button>
+  </nav>
+</aside>
 
-  <div class="cover">
-    <img class="brand-mark-img" src="icon-192.png?v=17" alt="Leave Register">
-    <div class="cover-main">
-      <p class="cover-eyebrow">EMPLOYEE RECORD BOOK</p>
-      <h2 class="cover-title">Leave Register <span>· விடுப்பு பதிவேடு</span></h2>
-    </div>
-    <div class="backup-row">
-      <span class="cover-note">Data is saved on this device/browser only.</span>
-      <button class="btn-ghost cover-btn" id="backupBtn">↓ Backup Data</button>
-      <label class="btn-ghost cover-btn" style="display:inline-flex; align-items:center; gap:6px;">↑ Restore Backup<input id="restoreInput" type="file" accept="application/json" style="display:none;"></label>
-    </div>
+<div class="app-shell">
+<div class="topbar">
+  <div class="topbar-brand">
+    <img src="icon-192.png?v=18" alt="Leave Register">
+    <div><h1>Leave Register</h1><div>விடுப்பு பதிவு</div></div>
   </div>
+  <div class="topbar-actions">
+    <button class="top-btn backup" id="backupBtn">⇩ &nbsp;Backup</button>
+    <label class="top-btn restore">⇧ &nbsp;Restore<input id="restoreInput" type="file" accept="application/json" style="display:none;"></label>
+    <button class="settings-btn" title="Settings">⚙</button>
+  </div>
+</div>
 
+<div class="main-content">
   <div class="summary" id="summary"></div>
 
   <div class="card">
@@ -478,6 +541,7 @@
 
   <div id="statusMsg" class="status-msg"></div>
 
+</div>
 </div>
 
 <div class="modal-overlay hidden" id="historyModal">
