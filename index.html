@@ -503,7 +503,10 @@ body.lang-en .modal-tamil { display:none !important; }
         <div class="photo-field">
           <div class="photo-preview" id="workerPhotoPreview">No photo</div>
           <div class="photo-actions">
-            <input id="w_photo" type="file" accept="image/*" />
+            <input id="w_photo" type="file" accept="image/*" style="display:none;" />
+            <input id="w_camera" type="file" accept="image/*" capture="environment" style="display:none;" />
+            <button type="button" class="btn-primary" id="takeWorkerPhoto">📷 Take Photo</button>
+            <button type="button" class="btn-ghost" id="chooseWorkerPhoto">🖼 Choose Photo</button>
             <button type="button" class="btn-ghost" id="removeWorkerPhoto" style="display:none;">Remove Photo</button>
           </div>
         </div>
@@ -804,9 +807,13 @@ function setWorkerPhotoPreview(photo){
   else { box.textContent='No photo'; remove.style.display='none'; }
 }
 
+let selectedWorkerPhotoFile = null;
+
 function clearWorkerForm(){
   ['w_name','w_dept','w_joined','w_phone','w_altphone','w_reference_other'].forEach(id => document.getElementById(id).value = '');
   const file=document.getElementById('w_photo'); if(file) file.value='';
+  const camera=document.getElementById('w_camera'); if(camera) camera.value='';
+  selectedWorkerPhotoFile = null;
   editingWorkerId = null;
   renderReferenceOptions();
   setWorkerPhotoPreview('');
@@ -828,7 +835,7 @@ document.getElementById('saveWorkerBtn').addEventListener('click', async () => {
   const referenceId = selectedRefWorker ? selectedRefWorker.id : '';
   const existing = editingWorkerId ? workers.find(w => w.id === editingWorkerId) : null;
   let photo = existing?.photo || '';
-  const photoFile = document.getElementById('w_photo').files?.[0];
+  const photoFile = selectedWorkerPhotoFile || document.getElementById('w_photo').files?.[0];
   if(photoFile){
     try{ photo = await compressWorkerPhoto(photoFile); }
     catch(e){ setStatus('Could not read worker photo.'); return; }
@@ -887,14 +894,32 @@ document.getElementById('w_reference_select').addEventListener('change', (e)=>{
   else { other.style.display='none'; other.value=''; }
 });
 
-document.getElementById('w_photo').addEventListener('change', async (e)=>{
-  const file=e.target.files?.[0];
-  if(!file){ setWorkerPhotoPreview(''); return; }
+async function handleWorkerPhotoFile(file){
+  if(!file){ return; }
+  selectedWorkerPhotoFile = file;
   try{ setWorkerPhotoPreview(await compressWorkerPhoto(file)); }catch(err){ setStatus('Could not preview worker photo.'); }
+}
+
+document.getElementById('w_photo').addEventListener('change', async (e)=>{
+  await handleWorkerPhotoFile(e.target.files?.[0]);
+});
+
+document.getElementById('w_camera').addEventListener('change', async (e)=>{
+  await handleWorkerPhotoFile(e.target.files?.[0]);
+});
+
+document.getElementById('chooseWorkerPhoto').addEventListener('click', ()=>{
+  document.getElementById('w_photo').click();
+});
+
+document.getElementById('takeWorkerPhoto').addEventListener('click', ()=>{
+  document.getElementById('w_camera').click();
 });
 
 document.getElementById('removeWorkerPhoto').addEventListener('click', ()=>{
   document.getElementById('w_photo').value='';
+  document.getElementById('w_camera').value='';
+  selectedWorkerPhotoFile = null;
   setWorkerPhotoPreview('');
   if(editingWorkerId){
     const w=workers.find(x=>x.id===editingWorkerId);
