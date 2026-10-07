@@ -288,6 +288,9 @@
     padding: 0 0 8px;
     box-shadow: 0 12px 0 rgba(0,0,0,0.15);
   }
+  #workersDetailModal .modal-card{
+    max-width: min(96vw, 1180px);
+  }
   .modal-head{
     background: var(--navy);
     color:#EFEAE0;
@@ -741,7 +744,7 @@ function renderWorkers(){
 
   wrap.innerHTML = `
     <div style="overflow-x:auto;">
-    <table style="min-width:680px;">
+    <table style="min-width:600px; width:100%;">
       <thead><tr><th>Name</th><th>Department</th><th>Joined</th><th>Phone</th><th>Alt. Phone</th><th>Reference</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
