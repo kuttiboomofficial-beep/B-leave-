@@ -6,8 +6,8 @@
 <title>Leave Register</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#25344A">
-<link rel="apple-touch-icon" href="icon-192.png?v=28">
-<link rel="icon" type="image/png" href="icon-192.png?v=28">
+<link rel="apple-touch-icon" href="icon-192.png?v=31">
+<link rel="icon" type="image/png" href="icon-192.png?v=31">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -419,7 +419,7 @@ body.lang-en .modal-tamil { display:none !important; }
 </head>
 <body>
 <aside class="app-sidebar">
-  <div class="side-logo"><img src="icon-192.png?v=28" alt="Leave Register"></div>
+  <div class="side-logo"><img src="icon-192.png?v=31" alt="Leave Register"></div>
   <nav class="side-nav">
     <button class="side-item active" data-nav="dashboard">⌂<span>Dashboard</span></button>
     <button class="side-item" data-action="open-workers-detail">👥<span>Workers</span></button>
@@ -437,13 +437,14 @@ body.lang-en .modal-tamil { display:none !important; }
 <div class="app-shell">
 <div class="topbar">
   <div class="topbar-brand">
-    <img src="icon-192.png?v=28" alt="Leave Register">
+    <img src="icon-192.png?v=31" alt="Leave Register">
     <div><h1>Leave Register</h1><div class="topbar-tamil">விடுப்பு பதிவு</div></div>
   </div>
   <div class="topbar-actions">
     <button class="top-btn backup" id="backupBtn">⇩ &nbsp;Backup</button>
     <label class="top-btn restore">⇧ &nbsp;Restore<input id="restoreInput" type="file" accept="application/json" style="display:none;"></label>
-    <button class="settings-btn" title="Settings">⚙</button>
+    <button class="top-btn" id="networkStatusBtn" type="button">📶 Local Network</button>
+    <button class="settings-btn" title="Settings" type="button">⚙</button>
   </div>
 </div>
 
@@ -861,7 +862,7 @@ function openNetworkInfo(){
   document.getElementById('utilityModal').classList.remove('hidden');
 }
 
-document.getElementById('networkStatusBtn').addEventListener('click',openNetworkInfo);
+document.getElementById('networkStatusBtn')?.addEventListener('click',openNetworkInfo);
 
 function renderReferenceOptions(selectedId='', selectedName=''){
   const sel = document.getElementById('w_reference_select');

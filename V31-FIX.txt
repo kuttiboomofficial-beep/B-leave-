@@ -1,0 +1,5 @@
+Leave Register v31
+
+Fix: Main buttons were not working because v30 referenced a Local Network button that was missing from the HTML. v31 adds the button and also makes the listener safe.
+
+All v30 features are retained.
